@@ -2,6 +2,15 @@
 
 MyElas aims to  forge all pre-processing, elastic constant and other property calculations, and post-processing into an integrated framework that automatically performs the designated tasks to drive data flowing along parallelizing pipelines from input to output.
 
+## Cite
+Hao Wang, Y.C. Gan, Hua Y. Geng, Xiang-Rong Chen,
+MyElas: An automatized tool-kit for high-throughput calculation, post-processing and visualization of elasticity and related properties of solids,
+Computer Physics Communications,
+Volume 281,
+2022,
+108495,
+ISSN 0010-4655,
+https://doi.org/10.1016/j.cpc.2022.108495
 
 ## Supports
 
@@ -53,3 +62,4 @@ See the MyElas_tree.txt
 ## Software run test
 
 See folder \example\bulk-materials-2nd-elastic-constants\Si\auto_elas.tar.xz
+
