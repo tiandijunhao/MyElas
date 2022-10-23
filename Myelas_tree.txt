@@ -1,0 +1,207 @@
+.
+├── example
+│   ├── 2D-materials-2nd-elastic-constants
+│   │   └── Graphene
+│   │       ├── Nelastic 0.png
+│   │       ├── Nelastic 1.png
+│   │       ├── Nelastic 2.png
+│   │       ├── Nelastic 3.png
+│   │       ├── POSCAR-uc
+│   │       ├── POTCAR
+│   │       └── second_elastic.out
+│   ├── bulk-materials-2nd-elastic-constants
+│   │   ├── alpha-Al2O3
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── Nelastic 6.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── alpha-U
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── Nelastic 6.png
+│   │   │   ├── Nelastic 7.png
+│   │   │   ├── Nelastic 8.png
+│   │   │   ├── Nelastic 9.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── CaMnO4
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── Nelastic 6.png
+│   │   │   ├── Nelastic 7.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── Diamond
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── epsilon-Fe
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── GaN
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── MgO
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   └── Si
+│   │       ├── auto_elas.tar.xz
+│   │       ├── E_Strain.out
+│   │       ├── Max poisson ratio.png
+│   │       ├── Max shear modulus.png
+│   │       ├── Min poisson ratio.png
+│   │       ├── Min shear modulus.png
+│   │       ├── Nelastic 1.png
+│   │       ├── Nelastic 2.png
+│   │       ├── Nelastic 3.png
+│   │       ├── POSCAR-uc
+│   │       ├── POTCAR
+│   │       ├── second_elastic.out
+│   │       └── Young's modulus.png
+│   ├── bulk-materials-3rd-elastic-constants
+│   │   ├── Diamond
+│   │   │   ├── ELADAT_3rd
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 0.png
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── second_elastic.out
+│   │   ├── epsilon-Fe
+│   │   │   ├── ELADAT_3rd
+│   │   │   ├── E_Strain.out
+│   │   │   ├── Nelastic 10.png
+│   │   │   ├── Nelastic 1.png
+│   │   │   ├── Nelastic 2.png
+│   │   │   ├── Nelastic 3.png
+│   │   │   ├── Nelastic 4.png
+│   │   │   ├── Nelastic 5.png
+│   │   │   ├── Nelastic 6.png
+│   │   │   ├── Nelastic 7.png
+│   │   │   ├── Nelastic 8.png
+│   │   │   ├── Nelastic 9.png
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   ├── RE-POSCAR
+│   │   │   └── second_elastic.out
+│   │   └── Si
+│   │       ├── ELADAT_3rd
+│   │       ├── E_Strain.out
+│   │       ├── Nelastic 1.png
+│   │       ├── Nelastic 2.png
+│   │       ├── Nelastic 3.png
+│   │       ├── Nelastic 4.png
+│   │       ├── Nelastic 5.png
+│   │       ├── Nelastic 6.png
+│   │       ├── POSCAR-uc
+│   │       ├── POTCAR
+│   │       ├── RE-POSCAR
+│   │       └── second_elastic.out
+│   ├── phonon_to_elas
+│   │   ├── alphaU_almamode
+│   │   │   ├── input_direct
+│   │   │   ├── phonon_elastic.out
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   ├── RE-POSCAR
+│   │   │   └── U_300.out
+│   │   ├── Si_phonopy
+│   │   │   ├── band.yaml
+│   │   │   ├── INCAR
+│   │   │   ├── input_direct
+│   │   │   ├── phonon_elastic.out
+│   │   │   ├── POSCAR-uc
+│   │   │   ├── POTCAR
+│   │   │   └── RE-POSCAR
+│   │   └── Si_TDEP
+│   │       ├── input_direct
+│   │       ├── outfile.dispersion_relations
+│   │       ├── outfile.dispersion_relations.gnuplot
+│   │       ├── phonon_elastic.out
+│   │       ├── POSCAR-uc
+│   │       ├── POTCAR
+│   │       └── RECELL
+│   └── read_elastic
+│       ├── Nb_OUTCAR
+│       │   ├── OUTCAR
+│       │   ├── POSCAR-uc
+│       │   ├── POTCAR
+│       │   └── second_elastic.out
+│       └── Si_elastic_out
+│           ├── elastic.out
+│           ├── POSCAR-uc
+│           ├── POTCAR
+│           ├── RE-POSCAR
+│           └── second_elastic.out
+├── LICENSE.txt
+├── manuals
+│   ├── USER-MANUAL-PYTHON.md
+│   └── USER-MANUAL-PYTHON.pdf
+├── myelas
+│   ├── __init__.py
+│   ├── para_vasp.py
+│   ├── phonon_to_elas.py
+│   ├── plot_fit_E.py
+│   ├── plot_projiect_cubic.py
+│   ├── plot_projiect.py
+│   ├── read_elastic.py
+│   ├── read_poscar.py
+│   ├── solve_elastic_2D.py
+│   ├── solve_elastic_3D.py
+│   ├── solve_elastic_3rd3D.py
+│   ├── standard_cell.py
+│   ├── strain_poscar_2D.py
+│   ├── strain_poscar_3D.py
+│   └── strain_poscar_3rd3D.py
+├── Myelas_tree.txt
+├── Readme.md
+├── scripts
+│   └── Myelas
+├── script_tools
+│   └── auto_elas_calculation.sh
+└── setup.py
+
+27 directories, 177 files

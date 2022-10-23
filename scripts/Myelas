@@ -1,0 +1,373 @@
+#!/usr/bin/env python
+import argparse
+import numpy as np
+import myelas
+import os
+
+if os.path.isfile("POSCAR-uc"):
+    spgnum = myelas.read_poscar.read_poscar().spacegroup_num()
+else:
+    print("WARNING! No POSCAR-uc file!")
+
+# Define arguments
+parser = argparse.ArgumentParser(description="myelas optionn")
+parser.add_argument(
+    "-g",
+    "--generate",
+    metavar="3D_2nd/2D_2nd/3D_3rd",
+    type=str,
+    nargs=1,
+    help="Generate elastic type which need calculate",
+)
+
+parser.add_argument(
+    "-so",
+    "--solve",
+    metavar="3D_2nd/2D_2nd/3D_3rd",
+    type=str,
+    nargs=1,
+    help="Solve elastic type which need calculate",
+)
+
+
+parser.add_argument(
+    "-smax",
+    "--strainmax",
+    metavar="0.018",
+    type=float,
+    default=False,
+    nargs=1,
+    help="The strain max number",
+)
+
+parser.add_argument(
+    "-snum",
+    "--strainnum",
+    metavar="13",
+    type=int,
+    default=False,
+    nargs=1,
+    help="The strain number",
+)
+
+parser.add_argument(
+    "-p3D",
+    "--plot_3D",
+    metavar="Youngs/Bulk/Shear/Poisson/SV/primary/fast/slow",
+    type=str,
+    nargs=1,
+    help="plot single-crystal crystal modulus and sound velocity",
+)
+
+parser.add_argument(
+    "-p2D",
+    "--plot_2D",
+    metavar="2D",
+    type=str,
+    nargs=1,
+    help="plot 2D materials modulus",
+)
+
+parser.add_argument(
+    "-ptype", "--plot_3D_type", metavar="3D/plane", type=str, nargs=1, help="plot type",
+)
+
+parser.add_argument(
+    "-minmax",
+    "--minmax",
+    metavar="min/max",
+    type=str,
+    nargs=1,
+    help="plot maxnum or minnum for shear and poisson ratio",
+)
+
+parser.add_argument(
+    "--vasp",
+    metavar="incar/kpoints/2D_kpoints",
+    type=str,
+    nargs=1,
+    help="Generate the VASP input file",
+)
+
+parser.add_argument(
+    "--encut",
+    metavar="600.0",
+    type=float,
+    nargs=1,
+    default=[600.0],
+    help="The encut energy in INCAR",
+)
+
+parser.add_argument(
+    "-Te",
+    "--Temperature",
+    metavar="300.0",
+    type=float,
+    default=[0],
+    nargs=1,
+    help="The electron temperature (K) in INCAR",
+)
+
+parser.add_argument(
+    "-p",
+    "--pressure",
+    metavar="1000.0",
+    type=float,
+    default=[0],
+    nargs=1,
+    help="The pressure in INCAR, unit: GPa, 1GPa=10kB",
+)
+
+parser.add_argument(
+    "--ismear", metavar="0", type=int, nargs=1, default=[0], help="The ISMEAR in INCAR",
+)
+
+parser.add_argument(
+    "--sigma",
+    metavar="0.05",
+    type=float,
+    nargs=1,
+    default=[0.05],
+    help="The smearing width in INCAR",
+)
+
+parser.add_argument(
+    "--isif", metavar="2", type=int, nargs=1, default=[2], help="The ISIF in INCAR",
+)
+
+parser.add_argument(
+    "-ks",
+    "--kspace",
+    metavar="0.10",
+    type=float,
+    default=[0.0],
+    nargs=1,
+    help="The KSPACING value in INCAR",
+)
+
+parser.add_argument(
+    "-kp",
+    "--kpoint",
+    metavar="6",
+    type=int,
+    default=[12],
+    nargs=1,
+    help="The kpoint number in KPINTS",
+)
+
+parser.add_argument(
+    "-kt", "--kpoint_type", metavar="G/M", type=str, nargs=1, help="The kpoint type"
+)
+
+parser.add_argument(
+    "-ctype",
+    "--calc_type",
+    metavar="rlc/stc",
+    type=str,
+    default=["stc"],
+    nargs=1,
+    help="The calculation type : relax (rlx) or  static (stc) ",
+)
+
+parser.add_argument(
+    "-re",
+    "--read_elastic",
+    metavar="OUTCAR/elastic.out",
+    type=str,
+    nargs=1,
+    help="Read the elastic tensor from OUTCAR or elastic.out file",
+)
+
+parser.add_argument(
+    "-rp",
+    "--read_phonon_to_calc",
+    metavar="phonopy/phonopy_old/alamode/alamode_scph/tdep",
+    type=str,
+    nargs=1,
+    help="Read the phonon dispersiaon to calculate elastic constants",
+)
+
+parser.add_argument(
+    "-pf",
+    "--input_phonon_file",
+    metavar="alamode.bands",
+    type=str,
+    nargs=1,
+    help="input phonon data file",
+)
+
+args = parser.parse_args()
+
+# Generate the strain POSCAR
+
+print("Welcome to use MyElas")
+
+if args.generate:
+    if os.path.isfile("POSCAR-uc"):
+        if args.generate[0] == "3D_2nd":
+            if args.strainmax:
+                if args.strainnum:
+                    myelas.strain_poscar_3D.strain_poscar_3d().crystal_strain(
+                        strainmax=args.strainmax[0], strainnum=args.strainnum[0]
+                    )
+
+        elif args.generate[0] == "2D_2nd":
+            if args.strainmax:
+                if args.strainnum:
+                    myelas.strain_poscar_2D.strain_poscar_2d().strain_2D(
+                        strain_max=args.strainmax[0], strain_num=args.strainnum[0]
+                    )
+
+        elif args.generate[0] == "3D_3rd":
+            if args.strainmax:
+                if args.strainnum:
+                    myelas.strain_poscar_3rd3D.strain_poscar_3d().crystal_strain(
+                        strainmax=args.strainmax[0], strainnum=args.strainnum[0]
+                    )
+    else:
+        print("ERROR! No POSCAR-uc file exit!")
+
+# Solve elastic constants
+if args.solve:
+    if os.path.isfile("POTCAR") and os.path.isfile("POSCAR-uc"):
+        if args.solve[0] == "3D_2nd":
+            if args.strainmax:
+                if args.strainnum:
+                    myelas.solve_elastic_3D.solve_elas3D().solve(
+                        strain_max=args.strainmax[0], strain_num=args.strainnum[0]
+                    )
+
+        elif args.solve[0] == "2D_2nd":
+            if args.strainmax:
+                if args.strainnum:
+                    myelas.solve_elastic_2D.solve_elas2D().solve(
+                        strain_max=args.strainmax[0], strain_num=args.strainnum[0]
+                    )
+
+        elif args.solve[0] == "3D_3rd":
+            if args.strainmax:
+                if args.strainnum:
+                    myelas.solve_elastic_3rd3D.solve_elas3D().solve(
+                        strain_max=args.strainmax[0], strain_num=args.strainnum[0]
+                    )
+
+    else:
+        print("ERROR! No POTCAR or POSCAR-uc file exit!")
+
+if args.read_elastic:
+    myelas.read_elastic.read_elastic().read_elas_tensor(elas_file=args.read_elastic[0])
+
+if args.plot_3D:
+    if os.path.isfile("second_elastic.out"):
+
+        if args.plot_3D[0] == "Youngs" or args.plot_3D[0] == "Bulk":
+            if args.plot_3D_type:
+                if spgnum >= 195 and spgnum <= 230:
+                    myelas.plot_projiect_cubic.plot_3D_modulus().plot_3D_modulus(
+                        modulus_name=args.plot_3D[0], plot_type=args.plot_3D_type[0],
+                    )
+                else:
+                    myelas.plot_projiect.plot_3D_modulus().plot_3D_modulus(
+                        modulus_name=args.plot_3D[0], plot_type=args.plot_3D_type[0],
+                    )
+
+        if args.plot_3D[0] == "Shear" or args.plot_3D[0] == "Poisson":
+            if args.plot_3D_type:
+                if args.minmax:
+                    if spgnum >= 195 and spgnum <= 230:
+                        myelas.plot_projiect_cubic.plot_3D_modulus().plot_3D_modulus(
+                            modulus_name=args.plot_3D[0],
+                            plot_type=args.plot_3D_type[0],
+                            minmax=args.minmax[0],
+                        )
+                    else:
+                        myelas.plot_projiect.plot_3D_modulus().plot_3D_modulus(
+                            modulus_name=args.plot_3D[0],
+                            plot_type=args.plot_3D_type[0],
+                            minmax=args.minmax[0],
+                        )
+                else:
+                    print("ERROR! Please input minmax value!")
+
+        if args.plot_3D[0] == "SV":
+            myelas.plot_projiect.plot_3D_sv().plot_sv()
+
+        if (
+            args.plot_3D[0] == "primary"
+            or args.plot_3D[0] == "fast"
+            or args.plot_3D[0] == "slow"
+        ):
+            if args.plot_3D_type:
+                if spgnum >= 195 and spgnum <= 230:
+                    myelas.plot_projiect_cubic.plot_3D_sv().plot_sv(
+                        plot_type=args.plot_3D_type[0], type=args.plot_3D[0]
+                    )
+                else:
+                    myelas.plot_projiect.plot_3D_sv().plot_sv(
+                        plot_type=args.plot_3D_type[0], type=args.plot_3D[0]
+                    )
+    else:
+        print("ERROR! No second-order elastic constant file exit!")
+
+if args.plot_2D:
+    if os.path.isfile("second_elastic.out"):
+
+        if args.plot_2D[0] == "2D":
+            myelas.plot_projiect.plot_2D_modulus().plot_2D()
+        else:
+            print("Please input '2D'")
+    else:
+        print("ERROR! No elastic constant file exit!")
+
+# Generate the VASP file: INCAR or KPOINTS
+if args.vasp:
+    if args.vasp[0] == "incar":
+        myelas.para_vasp.parameter_test().INCAR_G(
+            encut=args.encut[0],
+            kspace=args.kspace[0],
+            ismear=args.ismear[0],
+            sigma=args.sigma[0],
+            isif=args.isif[0],
+            pressure=args.pressure[0],
+            Temperature=args.Temperature[0],
+            Calc_type=args.calc_type[0],
+        )
+
+    elif args.vasp[0] == "kpoints":
+        myelas.para_vasp.parameter_test().KPOINTS_G(
+            kpoint=args.kpoint[0], mgrid=args.kpoint_type[0]
+        )
+
+    elif args.vasp[0] == "2D_kpoints":
+        myelas.para_vasp.parameter_test().KPOINTS_G_2D(
+            kpoint=args.kpoint[0], mgrid=args.kpoint_type[0]
+        )
+
+
+if args.read_phonon_to_calc:
+    if args.read_phonon_to_calc[0] == "phonopy":
+        print("Only supporting yaml file.")
+        print("The yaml file generated by old and new phonopy is different.")
+        myelas.phonon_to_elas.phononToElas().calc_elas_phonopy(
+            phonon_file=args.input_phonon_file[0]
+        )
+    elif args.read_phonon_to_calc[0] == "phonopy_old":
+        print("Only supporting yaml file.")
+        print("The yaml file generated by old and new phonopy is different.")
+        myelas.phonon_to_elas.phononToElas().calc_elas_phonopy_old(
+            phonon_file=args.input_phonon_file[0]
+        )
+    elif args.read_phonon_to_calc[0] == "alamode":
+        myelas.phonon_to_elas.phononToElas().calc_elas_alamode(
+            phonon_file=args.input_phonon_file[0], phonon_type="harmonic"
+        )
+    elif args.read_phonon_to_calc[0] == "alamode_scph":
+        print("At present, only one temperature data in the band file is supported.")
+        myelas.phonon_to_elas.phononToElas().calc_elas_alamode(
+            phonon_file=args.input_phonon_file[0], phonon_type="scph"
+        )
+    elif args.read_phonon_to_calc[0] == "tdep":
+        myelas.phonon_to_elas.phononToElas().calc_elas_tdep(
+            phonon_file=args.input_phonon_file[0]
+        )
+
