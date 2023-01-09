@@ -1,30 +1,24 @@
 import numpy as np
 import os
 from . import read_poscar as readpos
-#from shutil import copy
+
+# from shutil import copy
 from . import standard_cell
 
 
-class strain_poscar_3d(object):
+class stress_strain_poscar_3d(object):
     """
     This is used to get the strain tensor
     """
 
     def __init__(self):
-        print("Generate strain poscar of bulk materials for static calculation.")
+        print("You are generating strain poscar for NVT MD.")
         self.spg_num = readpos.read_poscar().spacegroup_num()
         self.latt = standard_cell.recell(to_pricell=False).latti()
         self.atomname = readpos.read_poscar().atom_name()
         self.atomnum = standard_cell.recell(to_pricell=False).atom_number()
         self.postype = readpos.read_poscar().position_type()
         self.position = standard_cell.recell(to_pricell=False).positions()
-
-    ############################################################
-    #### Cubic crystal system (3 nelastic)               #######
-    #### e=(0 0 0 d d d);  deltaE/V=(3/2)C44*d^2;        #######
-    #### e=(d d 0 0 0 0);  deltaE/V=(C11+C12)*d^2;       #######
-    #### e=(0 0 0 d d d);  deltaE/V=(C11+2*C12)*d^2;     #######
-    ############################################################
 
     def __cubic_strain(self, strain_max=None, strain_num=None, nelastic=None):
         """
@@ -45,13 +39,8 @@ class strain_poscar_3d(object):
         starin_step = 2 * strain_max / (strain_num - 1)
         strain_param = np.arange(-strain_max, strain_max + 0.0001, starin_step)
         for i in np.arange(0, strain_num, 1):
-            defmat = np.array(
-                [
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], strain_param[i]],
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [strain_param[i], strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                ]
-            )
+            defmat = np.array([[strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
+                               [0.0, 0.0, 0.0, strain_param[i], 0.0, 0.0]])
             strten = np.zeros((3, 3))
             for j in np.arange(0, nelastic, 1):
                 strten[0, 0] = defmat[j, 0] + 1.0
@@ -67,15 +56,6 @@ class strain_poscar_3d(object):
                 self.strain_latt = np.dot(self.latt, strten)
 
                 self.__write_poscar(ndef=i, nelas=j)
-
-    ################################################################
-    #### Hexagonal crystal system (5 nelastic)               #######
-    #### e=(d d 0 0 0 0);  deltaE/V=(C11+C12)*d^2            #######
-    #### e=(0 0 0 0 0 d);  deltaE/V=(1/4)(C11-C12)*d^2       #######
-    #### e=(0 0 d 0 0 0);  deltaE/V=(1/2)*C33*d^2            #######
-    #### e=(0 0 0 d d 0);  deltaE/V=C44*d^2                  #######
-    #### e=(d d d 0 0 0);  deltaE/V=(C11+C12+2C13+C33/2)*d^2 #######
-    ################################################################
 
     def __hexagonal_strain(self, strain_max=None, strain_num=None, nelastic=None):
         """
@@ -95,11 +75,8 @@ class strain_poscar_3d(object):
         for i in np.arange(0, strain_num, 1):
             defmat = np.array(
                 [
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
-                    [strain_param[i], strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
+                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, 0.0],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -124,12 +101,8 @@ class strain_poscar_3d(object):
         for i in np.arange(0, strain_num, 1):
             defmat = np.array(
                 [
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
-                    [strain_param[i], strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, strain_param[i], strain_param[i]],
+                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, 0.0],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -154,14 +127,8 @@ class strain_poscar_3d(object):
         for i in np.arange(0, strain_num, 1):
             defmat = np.array(
                 [
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
-                    [strain_param[i], strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, strain_param[i], strain_param[i]],
-                    [0.0, strain_param[i], 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, 0.0, strain_param[i], 0.0, strain_param[i]],
+                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, 0.0],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -186,12 +153,8 @@ class strain_poscar_3d(object):
         for i in np.arange(0, strain_num, 1):
             defmat = np.array(
                 [
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
-                    [strain_param[i], strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
+                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, strain_param[i]],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -216,13 +179,8 @@ class strain_poscar_3d(object):
         for i in np.arange(0, strain_num, 1):
             defmat = np.array(
                 [
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
-                    [strain_param[i], strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, strain_param[i]],
+                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, strain_param[i]],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -249,13 +207,14 @@ class strain_poscar_3d(object):
                 [
                     [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
                     [0.0, strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, strain_param[i], 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [strain_param[i], 0.0, strain_param[i], 0.0, 0.0, 0.0],
+                    [
+                        0.0,
+                        0.0,
+                        strain_param[i],
+                        strain_param[i],
+                        strain_param[i],
+                        strain_param[i],
+                    ],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -282,17 +241,8 @@ class strain_poscar_3d(object):
                 [
                     [strain_param[i], 0.0, 0.0, 0.0, 0.0, 0.0],
                     [0.0, strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, strain_param[i], 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [0.0, strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [strain_param[i], 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, strain_param[i], 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
+                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, strain_param[i], strain_param[i]],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -323,21 +273,6 @@ class strain_poscar_3d(object):
                     [0.0, 0.0, 0.0, strain_param[i], 0.0, 0.0],
                     [0.0, 0.0, 0.0, 0.0, strain_param[i], 0.0],
                     [0.0, 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [strain_param[i], strain_param[i], 0.0, 0.0, 0.0, 0.0],
-                    [strain_param[i], 0.0, strain_param[i], 0.0, 0.0, 0.0],
-                    [strain_param[i], 0.0, 0.0, strain_param[i], 0.0, 0.0],
-                    [strain_param[i], 0.0, 0.0, 0.0, strain_param[i], 0.0],
-                    [strain_param[i], 0.0, 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, strain_param[i], strain_param[i], 0.0, 0.0, 0.0],
-                    [0.0, strain_param[i], 0.0, strain_param[i], 0.0, 0.0],
-                    [0.0, strain_param[i], 0.0, 0.0, strain_param[i], 0.0],
-                    [0.0, strain_param[i], 0.0, 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, strain_param[i], strain_param[i], 0.0, 0.0],
-                    [0.0, 0.0, strain_param[i], 0.0, strain_param[i], 0.0],
-                    [0.0, 0.0, strain_param[i], 0.0, 0.0, strain_param[i]],
-                    [0.0, 0.0, 0.0, strain_param[i], strain_param[i], 0.0],
-                    [0.0, 0.0, 0.0, strain_param[i], 0.0, strain_param[i]],
-                    [0.0, 0.0, 0.0, 0.0, strain_param[i], strain_param[i]],
                 ]
             )
             strten = np.zeros((3, 3))
@@ -427,44 +362,46 @@ class strain_poscar_3d(object):
 
         if self.spg_num >= 1 and self.spg_num <= 2:
             self.__triclinic_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=21
+                strain_max=strainmax, strain_num=strainnum, nelastic=6
             )
 
         elif self.spg_num >= 3 and self.spg_num <= 15:
             self.__monoclinic_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=13
+                strain_max=strainmax, strain_num=strainnum, nelastic=4
             )
 
         elif self.spg_num >= 16 and self.spg_num <= 74:
             self.__orthorhombic_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=9
+                strain_max=strainmax, strain_num=strainnum, nelastic=3
             )
 
         elif self.spg_num >= 75 and self.spg_num <= 88:
             self.__tetragonal_II_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=7
+                strain_max=strainmax, strain_num=strainnum, nelastic=2
             )
 
         elif self.spg_num >= 89 and self.spg_num <= 142:
             self.__tetragonal_I_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=6
+                strain_max=strainmax, strain_num=strainnum, nelastic=2
             )
 
         elif self.spg_num >= 143 and self.spg_num <= 148:
             self.__rhombohedral_II_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=8
+                strain_max=strainmax, strain_num=strainnum, nelastic=2
             )
 
         elif self.spg_num >= 149 and self.spg_num <= 167:
             self.__rhombohedral_I_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=6
+                strain_max=strainmax, strain_num=strainnum, nelastic=2
             )
 
         elif self.spg_num >= 168 and self.spg_num <= 194:
             self.__hexagonal_strain(
-                strain_max=strainmax, strain_num=strainnum, nelastic=5
+                strain_max=strainmax, strain_num=strainnum, nelastic=2
             )
 
         elif self.spg_num >= 195 and self.spg_num <= 230:
-            self.__cubic_strain(strain_max=strainmax, strain_num=strainnum, nelastic=3)
+            self.__cubic_strain(strain_max=strainmax, strain_num=strainnum, nelastic=2)
 
+if __name__ == '__main__':
+    stress_strain_poscar_3d().crystal_strain(strainmax=0.04, strainnum=5)

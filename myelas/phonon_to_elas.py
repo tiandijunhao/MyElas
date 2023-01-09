@@ -9,7 +9,7 @@ from . import standard_cell
 
 class phononToElas(object):
     def __init__(self):
-
+        print("Read phonon dispersion to calculate elastic constants.")
         if os.path.exists("input_direct"):
             print("input_direct.out already exists")
         else:

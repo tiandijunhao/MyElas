@@ -10,16 +10,8 @@ class strain_poscar_3d(object):
     This is used to get the strain tensor
     """
 
-    def __init__(
-        self,
-        spg_num=None,
-        latt=None,
-        atomname=None,
-        atomnum=None,
-        postype=None,
-        position=None,
-        strain_latt=None,
-    ):
+    def __init__(self):
+        print("Generate strain poscar of bulk materials for static calculation.")
         self.spg_num = readpos.read_poscar().spacegroup_num()
         self.latt = standard_cell.recell(to_pricell=False).latti()
         self.atomname = readpos.read_poscar().atom_name()

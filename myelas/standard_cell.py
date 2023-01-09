@@ -8,16 +8,6 @@ import spglib
 class recell(object):
     def __init__(
         self,
-        spg_num=None,
-        lattindex=None,
-        latt=None,
-        atomname=None,
-        atomnum=None,
-        postype=None,
-        position=None,
-        cell_lattice=None,
-        cell_position=None,
-        cell_atomnum=None,
         to_pricell = None
     ):
         # read the prigmitive cell

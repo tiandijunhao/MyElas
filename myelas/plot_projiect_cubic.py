@@ -23,10 +23,36 @@ class Arrow3D(FancyArrowPatch):
 
 
 class plot_3D_modulus(object):
-    def __init__(self, Celas=None):
+    def __init__(self, Celas=None, Temp=None):
+        self.Temp = Temp
         if Celas == None:
             if os.path.isfile("second_elastic.out"):
                 elasfile = linecache.getlines("second_elastic.out")
+                elas = [line.strip() for line in elasfile]
+
+                celas = np.zeros((6, 6))
+                index = 0
+
+                for c_elas in elas[4:10]:
+                    c_elas = c_elas.split()
+                    celas[index, :] = c_elas[0:6]
+                    index += 1
+                for i in np.arange(0, 3, 1):
+                    for j in np.arange(3, 6, 1):
+                        celas[i, j] = np.sqrt(2) * celas[i, j]
+                        celas[j, i] = np.sqrt(2) * celas[j, i]
+
+                for m in np.arange(3, 6, 1):
+                    for n in np.arange(3, 6, 1):
+                        if m == n:
+                            celas[m, n] = 2 * celas[m, n]
+                        else:
+                            celas[m, n] = 2 * celas[m, n]
+                            celas[n, m] = 2 * celas[n, m]
+
+                self.Celas = celas
+            elif os.path.isfile("second_elastic_{}K.out".format(Temp)):
+                elasfile = linecache.getlines("second_elastic_{}K.out".format(Temp))
                 elas = [line.strip() for line in elasfile]
 
                 celas = np.zeros((6, 6))
@@ -1047,7 +1073,10 @@ class plot_3D_modulus(object):
                 transform=ax.transAxes,
                 fontsize=18,
             )
-            plt.savefig(Title[0], dpi=600, bbox_inches="tight")
+            if self.Temp == None:
+                plt.savefig(Title[0], dpi=600, bbox_inches="tight")
+            else:
+                plt.savefig(Title[0]+" {}".format(self.Temp), dpi=600, bbox_inches="tight")
 
         elif plot_type == "plane":
 
@@ -1166,7 +1195,10 @@ class plot_3D_modulus(object):
             # gs_left.update(wspace=0.50)
             # plt.tight_layout()
             plt.subplots_adjust(wspace=0.25, hspace=0)
-            plt.savefig(Title[0], dpi=600, bbox_inches="tight")
+            if self.Temp == None:
+                plt.savefig(Title[0], dpi=600, bbox_inches="tight")
+            else:
+                plt.savefig(Title[0]+" {}".format(self.Temp), dpi=600, bbox_inches="tight")
 
 
 class plot_3D_sv(object):
@@ -1454,7 +1486,10 @@ class plot_3D_sv(object):
             ax3 = fig.add_subplot(133, projection="3d")
             self.plot_3d_sv(E=VL, E_x=VL_x, E_y=VL_y, E_z=VL_z, ax1=ax3, title="Primary", colorbar_direcrion='h')
             plt.subplots_adjust(wspace=0.20)
-            plt.savefig("Single Sound Velocity.png", dpi=600, bbox_inches="tight")
+            if self.Temp == None:
+                plt.savefig("Single Sound Velocity.png", dpi=600, bbox_inches="tight")
+            else:
+                plt.savefig("Single Sound Velocity_{}K.png".format(self.Temp), dpi=600, bbox_inches="tight")
             
         elif plot_type =="plane":
             V_111=[]
@@ -1530,7 +1565,10 @@ class plot_3D_sv(object):
                 plt.yticks(fontsize=18)
                 
                 plt.subplots_adjust(wspace=0.25, hspace=0)
-                plt.savefig('primary_inplane', dpi=600, bbox_inches="tight")
+                if self.Temp == None:
+                    plt.savefig('primary_inplane', dpi=600, bbox_inches="tight")
+                else:
+                    plt.savefig('primary_inplane_{}K'.format(self.Temp), dpi=600, bbox_inches="tight")
                 
             elif type == 'fast':
                 ax1 = fig.add_subplot(141, projection="3d")
@@ -1558,7 +1596,10 @@ class plot_3D_sv(object):
                 plt.yticks(fontsize=18)
                 
                 plt.subplots_adjust(wspace=0.25, hspace=0)
-                plt.savefig('fast_inplane', dpi=600, bbox_inches="tight")
+                if self.Temp == None:
+                    plt.savefig('fast_inplane', dpi=600, bbox_inches="tight")
+                else:
+                    plt.savefig('fast_inplane_{}K'.format(self.Temp), dpi=600, bbox_inches="tight")
                 
             elif type == 'slow':
                 ax1 = fig.add_subplot(141, projection="3d")
@@ -1586,7 +1627,11 @@ class plot_3D_sv(object):
                 plt.yticks(fontsize=18)
                 
                 plt.subplots_adjust(wspace=0.25, hspace=0)
-                plt.savefig('slow_inplane', dpi=600, bbox_inches="tight")
+                if self.Temp == None:
+                    plt.savefig('slow_inplane', dpi=600, bbox_inches="tight")
+                else:
+                    plt.savefig('slow_inplane_{}K'.format(self.Temp), dpi=600, bbox_inches="tight")
+                
 #plot_3D_sv().plot_sv()
 # plt.show()
 

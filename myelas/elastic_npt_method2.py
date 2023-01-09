@@ -1,40 +1,24 @@
-import os
 import numpy as np
-
+import os
 from . import read_poscar as readpos
 from . import standard_cell
-from . import plot_fit_E
-from . import strain_matrix_string
 
 
-# import read_poscar as readpos
-# import standard_cell
-
-
-class solve_elas3D(object):
-    def __init__(self,):
-        print("Solve 2nd elastic constants of bulk materials.")
+class npt_solve_method_2(object):
+    def __init__(self, Temp):
+        print("======================================================================")
+        print("==== Stress-strain method in constant pressure ensembles           ===")
+        print("==== Initial strain fluctuation formula by Parrinello and Rahman   ===")
+        print("==== The method requires sufficiently long time steps to converge. ===")
+        print("==== Cite: J. Chem. Phys. 76 (1982) 2662–2666.                     ===")
+        print("======================================================================")
+        
+        self.Temp = Temp
         self.spg_num = readpos.read_poscar().spacegroup_num()
         self.lattindex = readpos.read_poscar().latt_index()
         self.latt = standard_cell.recell(to_pricell=False).latti()
-        atom_num = standard_cell.recell(to_pricell=False).atom_number()
-
-        recipvect = np.array([[0.0, 0.0, 0.0]])
-        recipvect[0, 0] = (
-            self.latt[1, 1] * self.latt[2, 2] - self.latt[2, 1] * self.latt[1, 2]
-        )
-        recipvect[0, 1] = (
-            self.latt[1, 2] * self.latt[2, 0] - self.latt[2, 2] * self.latt[1, 0]
-        )
-        recipvect[0, 2] = (
-            self.latt[1, 0] * self.latt[2, 1] - self.latt[2, 0] * self.latt[1, 1]
-        )
-
-        self.volume = (1.0 ** 3.0) * (
-            self.latt[0, 0] * recipvect[0, 0]
-            + self.latt[0, 1] * recipvect[0, 1]
-            + self.latt[0, 2] * recipvect[0, 2]
-        )
+        atom_num = readpos.read_poscar().atom_number()
+        
         potcar = open("POTCAR", mode="r")
 
         pomass = []
@@ -49,204 +33,304 @@ class solve_elas3D(object):
         self.num = 0
         for i in np.arange(0, len(atom_num), 1):
             self.mass = self.mass + float(atom_num[i]) * float(pomass[i])
-            self.num = self.num + atom_num[i]
+            self.num = self.num + int(atom_num[i])
         print("Total mass: ", self.mass)
-        self.density = 10000 * float(self.mass) / (6.02 * self.volume)
 
-    def solve(
-        self, strain_max=None, strain_num=None, theta_degree=None, phi_degree=None,
-    ):
-        """
-        To solve the second elastics
-        -------
-        strain_max : must be equal to the maxinum of generating strain poscar.
-        strain_num : must be equal to the number of strain poscar in one elastic independent.
-        """
-
-        if self.spg_num >= 1 and self.spg_num <= 2:
-            nelastic = 21
-
-        elif self.spg_num >= 3 and self.spg_num <= 15:
-            nelastic = 13
-
-        elif self.spg_num >= 16 and self.spg_num <= 74:
-            nelastic = 9
-
-        elif self.spg_num >= 75 and self.spg_num <= 88:
-            nelastic = 7
-
-        elif self.spg_num >= 89 and self.spg_num <= 142:
-            nelastic = 6
-
-        elif self.spg_num >= 143 and self.spg_num <= 148:
-            nelastic = 8
-
-        elif self.spg_num >= 149 and self.spg_num <= 167:
-            nelastic = 6
-
-        elif self.spg_num >= 168 and self.spg_num <= 194:
-            nelastic = 5
-
-        elif self.spg_num >= 195 and self.spg_num <= 230:
-            nelastic = 3
-
-        strain_matrix_str=strain_matrix_string.Elastics_3D(spg_num=self.spg_num)
+    def read_sxdatcar(self, sstep=None, slice_step=None):
+        lattice_avg = np.zeros((3, 3), dtype=np.float64)
+        xdatacar = open("XDATCAR", mode="r")
+        all_lines = xdatacar.readlines()
+        inum = 0
+        tstep = 0
+        for line in np.arange(0, len(all_lines), 1):
+            if "Direct configuration=" in all_lines[line]:
+                tstep = tstep + 1
+        print("Xdatacar total step: {}; Start calculate step: {}".format(tstep, sstep))
+        index_num = tstep - sstep
+        if slice_step>index_num:
+            print("Slice step is too large! Now it equals to (total_step-input_start_step)")
+            slice_step = index_num
         
-        starin_step = 2.0 * strain_max / (strain_num - 1)
-        strain_param = np.arange(-strain_max, strain_max + 0.0001, starin_step)
-
-        strain_energy = {}
-        fit_coeffs = []
-
-        # Read and save the strain energy
-        E_strain_data = open("E_Strain.out", mode="w")
-        print("Space group {:0>3d}".format(self.spg_num), file=E_strain_data)
-
-        for nelas in np.arange(0, nelastic, 1):
+        print("Start reading the lattice matrix.")
+        n_num = int(index_num /slice_step)
+        lattice_i = np.zeros((index_num, 3, 3), dtype=np.float64)
+        x_num = 0
+        for line in np.arange(0, len(all_lines), 1):
+            if "Direct configuration=" in all_lines[line]:
+                x_num = x_num + 1
+                if x_num > sstep:
+                    lattice_i[inum, 0, 0:3] = all_lines[line - 5].split()[0:3]
+                    lattice_i[inum, 1, 0:3] = all_lines[line - 4].split()[0:3]
+                    lattice_i[inum, 2, 0:3] = all_lines[line - 3].split()[0:3]
+                    inum = inum + 1
+        
+        print("Start calculation of elastic constants and standard errors.")            
+        elas=np.zeros((n_num,6,6))
+        V = np.zeros((n_num))
+        Celas = np.zeros((6,6))
+        elas_err = np.zeros((6,6))
+        for k in np.arange(0,n_num):
+            for i in np.arange(0, 3):
+                for j in np.arange(0, 3):
+                    lattice_avg[i, j] = np.mean(lattice_i[k:(k+1)*slice_step, i, j])
+            #print(lattice_avg)
+            strain_tensor,volume_i = self.calc_strain(lattice_i[k*slice_step:(k+1)*slice_step, :, :], lattice_avg, index=slice_step)
+            elas[k,:,:], V[k], title =self.calc_elas(strain=strain_tensor,volume=volume_i)
+        for i in np.arange(0,6):
+            for j in np.arange(0,6):
+                Celas[i,j]=np.mean(elas[:,i,j])
+                elas_err[i,j]=np.std(elas[:,i,j])
+        
+        print("Writing elastic constants and standard errors.")        
+        #write standord error
+        err_file = open("elastic_error_{}K.out".format(self.Temp), mode='w')
+        for i in np.arange(0, 6, 1):
             print(
-                "#nelastic {:0>2d}  strain  energy  (E-E0)/V0".format(nelas+1),
-                file=E_strain_data,
+                format(elas_err[i, 0], ">10.4f"),
+                format(elas_err[i, 1], ">10.4f"),
+                format(elas_err[i, 2], ">10.4f"),
+                format(elas_err[i, 3], ">10.4f"),
+                format(elas_err[i, 4], ">10.4f"),
+                format(elas_err[i, 5], ">10.4f"),
+                file=err_file,
             )
+        
+        self.volume = np.mean(V[:])
+        self.density = 10000 * float(self.mass) / (6.02 * self.volume)
+        self.elasproperties(Celas=Celas, title=title)
+        
+    def read_nxdatcar(self, sstep=None, estep=None, nxdatcar=None):
+        elas = np.zeros((nxdatcar,6,6))
+        V= np.zeros((nxdatcar))
+        
+        print("Start reading the lattice matrix.")
+        for n in np.arange(0,nxdatcar):
+            lattice_avg = np.zeros((3, 3), dtype=np.float64)
+            lattice_i = np.zeros((estep-sstep, 3, 3), dtype=np.float64)
+            xdatacar = open("XDATCAR_{:02d}".format(n+1), mode="r")
+            all_lines = xdatacar.readlines()
+            inum = 0
+            tstep = 0
+            for line in np.arange(0, len(all_lines), 1):
+                if "Direct configuration=" in all_lines[line]:
+                    tstep = tstep + 1
+                    if tstep>sstep and tstep <=estep:
+                        lattice_i[inum, 0, 0:3] = all_lines[line - 5].split()[0:3]
+                        lattice_i[inum, 1, 0:3] = all_lines[line - 4].split()[0:3]
+                        lattice_i[inum, 2, 0:3] = all_lines[line - 3].split()[0:3]
+                        inum = inum + 1
+            
+            lattice  = np.zeros((inum,3,3))
+            print("Xdatcar_{:02d} total step: {}; Start calculate step: {}".format(n+1,tstep, sstep))
+            if inum+sstep<estep:
+                lattice =  lattice_i[0:inum,:,:]
+            else:
+                lattice = lattice_i
+            for i in np.arange(0,3):
+                for j in np.arange(0,3):
+                    lattice_avg[i, j] = np.mean(lattice[:, i, j])
+            
+            strain_tensor, volume_i = self.calc_strain(lattice, lattice_avg, index=inum)
+            elas[n,:,:], V[n], title = self.calc_elas(strain=strain_tensor,volume=volume_i)
+        
+        print("Start calculation of elastic constants and standard errors.")
+        Celas = np.zeros((6,6))
+        elas_err = np.zeros((6,6))
+        for i in np.arange(0,6):
+            for j in np.arange(0,6):
+                Celas[i,j]=np.mean(elas[:,i,j])
+                elas_err[i,j]=np.std(elas[:,i,j])
+        
+        print("Writing elastic constants and standard errors.")
+        #write standord error
+        err_file = open("elastic_error_{}K.out".format(self.Temp), mode='w')
+        for i in np.arange(0, 6, 1):
             print(
-                "#strain tensor: "+strain_matrix_str[nelas],
-                file=E_strain_data,
+                format(elas_err[i, 0], ">10.4f"),
+                format(elas_err[i, 1], ">10.4f"),
+                format(elas_err[i, 2], ">10.4f"),
+                format(elas_err[i, 3], ">10.4f"),
+                format(elas_err[i, 4], ">10.4f"),
+                format(elas_err[i, 5], ">10.4f"),
+                file=err_file,
             )
-
-            energy = []
-            fit_energy = []
-            for ndef in np.arange(0, strain_num, 1):
-                full_path = (
-                    "nelastic_"
-                    + str(format(nelas + 1, "02d"))
-                    + "/strain_"
-                    + str(format(ndef + 1, "03d"))
-                )
-
-                # readout = open(
-                #    "OSZICAR_"
-                #    + str(format(nelas + 1, "02d"))
-                #    + "_"
-                #    + str(format(ndef + 1, "03d")),
-                #    mode="r",
-                # )
-                readout = open(full_path + "/OUTCAR", mode="r")
-
-                outlines = readout.readlines()
-
-                for i in np.arange(0, len(outlines), 1):
-                    if "ISMEAR" in outlines[i]:
-                        et = outlines[i].split()[2]
-                    if "energy  without entropy=" in outlines[i]:
-                        if "enthalpy is  TOTEN" in outlines[i + 1]:
-                            E = outlines[i + 1].split()
-                            energy.append(float(E[4]))
-                        else:
-                            if et == "-1;":
-                                E = outlines[i - 2].split()
-                                energy.append(float(E[4]))
-                            else:
-                                E = outlines[i].split()
-                                energy.append(float(E[6]))
-
-            strain_energy[nelas] = np.array(energy)
-
-            for j in np.arange(0, strain_num, 1):
-
-                fit_param = (np.array(energy)[j] - np.array(energy).min()) / (
-                    self.volume
-                )
-                fit_energy.append(fit_param)
-                print(
-                    format(strain_param[j],">10.6f"),
-                    format(energy[j],">10.6f"),
-                    format(fit_param,">10.6f"),
-                    file=E_strain_data,
-                )
-
-            fit_poly = np.polyfit(strain_param, np.array(fit_energy), 3)
-            fit_func = np.poly1d(fit_poly)
-            coffs = fit_func.coeffs * 160.21766208
-            fit_coeffs.append(coffs[1])
-
-            # plot fit function
-            plot_fit_E.plot_energy_fit().plot_energy(
-                x=strain_param,
-                y=fit_energy,
-                fit_func=fit_func,
-                figname="Nelastic {:0>1d}".format(nelas + 1),
-                strain_str = strain_matrix_str[nelas]
+        
+        self.volume = np.mean(V[:])
+        self.density = 10000 * float(self.mass) / (6.02 * self.volume)
+        self.elasproperties(Celas=Celas, title=title)
+            
+    def calc_strain(self, lattice_i, lattice_avg, index=None):
+        lattice_avg_inv = np.linalg.inv(lattice_avg)
+        volume_i = []
+        strain_tensor = np.zeros((index, 6), dtype=np.float64)
+        strain_matrix = np.zeros((index, 3, 3), dtype=np.float64)
+        recipvect = np.array([[0.0, 0.0, 0.0]])
+        for i in np.arange(0, index):
+            strain_matrix[i, :, :] = np.matmul(lattice_avg_inv, lattice_i[i, :, :])
+            strain_tensor[i, 0] = strain_matrix[i, 0, 0] - 1.0  # xx
+            strain_tensor[i, 1] = strain_matrix[i, 1, 1] - 1.0  # yy
+            strain_tensor[i, 2] = strain_matrix[i, 2, 2] - 1.0  # zz
+            strain_tensor[i, 3] = strain_matrix[i, 1, 2]  # xy
+            strain_tensor[i, 4] = strain_matrix[i, 0, 2]  # xz
+            strain_tensor[i, 5] = strain_matrix[i, 0, 1]  # yz
+            recipvect[0, 0] = (
+                lattice_i[i, 1, 1] * lattice_i[i, 2, 2]
+                - lattice_i[i, 2, 1] * lattice_i[i, 1, 2]
             )
+            recipvect[0, 1] = (
+                lattice_i[i, 1, 2] * lattice_i[i, 2, 0]
+                - lattice_i[i, 2, 2] * lattice_i[i, 1, 0]
+            )
+            recipvect[0, 2] = (
+                lattice_i[i, 1, 0] * lattice_i[i, 2, 1]
+                - lattice_i[i, 2, 0] * lattice_i[i, 1, 1]
+            )
+            V = (
+                lattice_i[i, 0, 0] * recipvect[0, 0]
+                + lattice_i[i, 0, 1] * recipvect[0, 1]
+                + lattice_i[i, 0, 2] * recipvect[0, 2]
+            )
+            volume_i.append(V)
+        
+        #self.calc_elas(strain=strain_tensor,volume=volume_i)
+        return strain_tensor, volume_i
+        # print(strain_tensor[:,1])
+        # print(strain_tensor[:,1]*strain_tensor[:,1])
 
+    def calc_elas(self, strain=None, volume=None):
+        kB = 8.6173333331 * 10 ** (-5)
+        Vol_avg = np.mean(volume)
+        factor = 1/(160.21766208 * kB * self.Temp / Vol_avg)
+        Elas = np.zeros((6, 6))
+        Elas[0, 0] = factor *(
+            np.mean(strain[:, 0] * strain[:, 0])
+            - np.mean(strain[:, 0]) * np.mean(strain[:, 0])
+        )
+        Elas[1, 1] = factor * (
+            np.mean(strain[:, 1] * strain[:, 1])
+            - np.mean(strain[:, 1]) * np.mean(strain[:, 1])
+        )
+        Elas[2, 2] = factor * (
+            np.mean(strain[:, 2] * strain[:, 2])
+            - np.mean(strain[:, 2]) * np.mean(strain[:, 2])
+        )
+        Elas[3, 3] = factor * (
+            np.mean(strain[:, 3] * strain[:, 3])
+            - np.mean(strain[:, 3]) * np.mean(strain[:, 3])
+        )
+        Elas[4, 4] = factor * (
+            np.mean(strain[:, 4] * strain[:, 4])
+            - np.mean(strain[:, 4]) * np.mean(strain[:, 4])
+        )
+        Elas[5, 5] = factor * (
+            np.mean(strain[:, 5] * strain[:, 5])
+            - np.mean(strain[:, 5]) * np.mean(strain[:, 5])
+        )
+        Elas[1, 0]=Elas[0, 1] = factor * (
+            np.mean(strain[:, 0] * strain[:, 1])
+            - np.mean(strain[:, 0]) * np.mean(strain[:, 1])
+        )
+        Elas[2,0]=Elas[0, 2] = factor * (
+            np.mean(strain[:, 0] * strain[:, 2])
+            - np.mean(strain[:, 0]) * np.mean(strain[:, 2])
+        )
+        Elas[2,1]=Elas[1, 2] = factor * (
+            np.mean(strain[:, 1] * strain[:, 2])
+            - np.mean(strain[:, 1]) * np.mean(strain[:, 2])
+        )
+        
+        Elas[0,3]=Elas[3,0]=factor * (np.mean(strain[:, 0] * strain[:, 3])- np.mean(strain[:, 0]) * np.mean(strain[:, 3]))
+        Elas[0,4]=Elas[4,0]=factor * (np.mean(strain[:, 0] * strain[:, 4])- np.mean(strain[:, 0]) * np.mean(strain[:, 4]))
+        Elas[0,5]=Elas[5,0]=factor * (np.mean(strain[:, 0] * strain[:, 5])- np.mean(strain[:, 0]) * np.mean(strain[:, 5]))
+        
+        Elas[1,3]=Elas[3,1]=factor * (np.mean(strain[:, 1] * strain[:, 3])- np.mean(strain[:, 1]) * np.mean(strain[:, 3]))
+        Elas[1,4]=Elas[4,1]=factor * (np.mean(strain[:, 1] * strain[:, 4])- np.mean(strain[:, 1]) * np.mean(strain[:, 4]))
+        Elas[1,5]=Elas[5,1]=factor * (np.mean(strain[:, 1] * strain[:, 5])- np.mean(strain[:, 1]) * np.mean(strain[:, 5]))
+        
+        Elas[2,3]=Elas[3,2]=factor * (np.mean(strain[:, 2] * strain[:, 3])- np.mean(strain[:, 2]) * np.mean(strain[:, 3]))
+        Elas[2,4]=Elas[3,2]=factor * (np.mean(strain[:, 2] * strain[:, 4])- np.mean(strain[:, 2]) * np.mean(strain[:, 4]))
+        Elas[2,5]=Elas[3,2]=factor * (np.mean(strain[:, 2] * strain[:, 5])- np.mean(strain[:, 2]) * np.mean(strain[:, 5]))
+        
+        Elas[3,4]=Elas[4,3]=factor * (np.mean(strain[:, 3] * strain[:, 4])- np.mean(strain[:, 3]) * np.mean(strain[:, 4]))
+        Elas[3,5]=Elas[5,3]=factor * (np.mean(strain[:, 3] * strain[:, 5])- np.mean(strain[:, 3]) * np.mean(strain[:, 5]))
+        
+        Elas[4,5]=Elas[5,4]=factor * (np.mean(strain[:, 4] * strain[:, 5])- np.mean(strain[:, 4]) * np.mean(strain[:, 5]))
+        
+        #print(np.linalg.inv(Elas))
+        #print(Vol_avg)
+        Elas = np.linalg.inv(Elas)
+        Celas = np.zeros((6,6))
         if self.spg_num >= 1 and self.spg_num <= 2:
-            self.__triclinic_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__triclinic_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 3 and self.spg_num <= 15:
-            self.__monoclinic_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__monoclinic_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 16 and self.spg_num <= 74:
-            self.__orthorhombic_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__orthorhombic_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 75 and self.spg_num <= 88:
-            self.__tetragonal_II_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__tetragonal_II_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 89 and self.spg_num <= 142:
-            self.__tetragonal_I_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__tetragonal_I_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 143 and self.spg_num <= 148:
-            self.__rhombohedral_II_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__rhombohedral_II_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 149 and self.spg_num <= 167:
-            self.__rhombohedral_I_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__rhombohedral_I_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 168 and self.spg_num <= 194:
-            self.__hexagonal_solve(
-                c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree
+            Celas[:,:], title=self.__hexagonal_solve(
+                celas = Elas
             )
 
         elif self.spg_num >= 195 and self.spg_num <= 230:
-            self.__cubic_solve(c_coeffs=fit_coeffs, theta=theta_degree, phi=phi_degree)
-
-    def __cubic_solve(self, c_coeffs=None, theta=None, phi=None):
-        """
-        Cubic elastic tensor
-        ----------------------------
-        C11  C12  C12  0    0    0 \\
-        C12  C11  C12  0    0    0 \\
-        C12  C12  C11  0    0    0 \\
-        0    0    0    C44  0    0 \\
-        0    0    0    0    C44  0 \\
-        0    0    0    0    0    C44
-        """
-
+            Celas[:,:], title=self.__cubic_solve(
+                celas = Elas
+            )
+        
+        return Celas, Vol_avg, title 
+        #plt.plot(np.arange(0,len(strain[:,0])), strain[:,0])
+        #plt.plot(np.arange(0,len(strain[:,0])), strain[:,1])
+        #plt.plot(np.arange(0,len(strain[:,0])), strain[:,2])
+        #plt.plot(np.arange(0,len(strain[:,0])), strain[:,3])
+        #plt.plot(np.arange(0,len(strain[:,0])), strain[:,4])
+        #plt.plot(np.arange(0,len(strain[:,0])), strain[:,5])
+        #plt.show()
+    
+    def __cubic_solve(self, celas=None):
+        
         elas = np.zeros((6, 6))
-
-        elas[3, 3] = (2.0 / 3.0) * c_coeffs[0]
-        elas[0, 1] = (2.0 / 3.0) * c_coeffs[2] - c_coeffs[1]
-        elas[0, 0] = c_coeffs[1] - elas[0, 1]
-
+        
+        elas[0, 0] = (celas[0,0]+celas[1,1]+celas[2,2])/3.0
+        elas[0, 1] = (celas[0,1]+celas[0,2]+celas[1,2]+celas[1,0]+celas[2,1]+celas[2,0])/6.0
+        elas[3, 3] = (celas[3,3]+celas[4,4]+celas[5,5])/3.0
+        
         elas[4, 4] = elas[5, 5] = elas[3, 3]
         elas[1, 0] = elas[0, 2] = elas[2, 0] = elas[1, 2] = elas[2, 1] = elas[0, 1]
         elas[1, 1] = elas[2, 2] = elas[0, 0]
 
         Title = "The cubic crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
-
-    def __hexagonal_solve(self, c_coeffs=None, theta=None, phi=None):
+        return elas, Title
+        
+    def __hexagonal_solve(self, celas=None):
         """
         Hexagonal elastic tensor
         ----------------------------
@@ -259,13 +343,14 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = (4.0 * c_coeffs[1] + c_coeffs[0]) / 2.0
-        elas[0, 1] = c_coeffs[0] - elas[0, 0]
-        elas[2, 2] = 2.0 * c_coeffs[2]
-        elas[3, 3] = c_coeffs[3]
-        elas[0, 2] = (c_coeffs[4] - elas[0, 0] - elas[0, 1] - elas[2, 2] / 2.0) / 2.0
-
+        
+        elas[0, 0] = (celas[0,0]+celas[1,1])/2.0
+        elas[0, 1] = (celas[0,1]+celas[1,0])/2.0
+        elas[0, 2] = (celas[0,2]+celas[2,0]+celas[1,2]+celas[2,1])/4.0
+        
+        elas[2, 2] = celas[2,2]
+        elas[3, 3] = (celas[3,3]+celas[4,4])/2.0
+        
         elas[1, 1] = elas[0, 0]
         elas[1, 0] = elas[0, 1]
         elas[2, 0] = elas[1, 2] = elas[2, 1] = elas[0, 2]
@@ -274,9 +359,9 @@ class solve_elas3D(object):
 
         Title = "The hexagonal crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
-
-    def __rhombohedral_I_solve(self, c_coeffs=None, theta=None, phi=None):
+        return elas, Title
+    
+    def __rhombohedral_I_solve(self, celas=None):
         """
         Rhombohedral I elastic tensor
         ----------------------------
@@ -289,13 +374,14 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = (4.0 * c_coeffs[1] + c_coeffs[0]) / 2.0
-        elas[0, 1] = c_coeffs[0] - elas[0, 0]
-        elas[2, 2] = 2.0 * c_coeffs[2]
-        elas[3, 3] = c_coeffs[3]
-        elas[0, 2] = (c_coeffs[4] - elas[0, 0] - elas[0, 1] - elas[2, 2] / 2.0) / 2.0
-        elas[0, 3] = c_coeffs[5] - c_coeffs[3] / 2.0 - c_coeffs[1]
+        
+        elas[0, 0] = (celas[0,0]+celas[1,1])/2.0
+        elas[0, 1] = (celas[0,1]+celas[1,0])/2.0
+        elas[0, 2] = (celas[0,2]+celas[2,0]+celas[1,2]+celas[2,1])/4.0
+        elas[0, 3] = (celas[0,3]+celas[3,0]-celas[1,3]-celas[3,1]+celas[4,5]+celas[5,4])/6.0
+        
+        elas[2, 2] = celas[2,2]
+        elas[3, 3] = (celas[3,3]+celas[4,4])/2.0
 
         elas[1, 1] = elas[0, 0]
         elas[1, 0] = elas[0, 1]
@@ -307,9 +393,9 @@ class solve_elas3D(object):
 
         Title = "The rhombohedral I crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
+        return elas, Title
 
-    def __rhombohedral_II_solve(self, c_coeffs=None, theta=None, phi=None):
+    def __rhombohedral_II_solve(self, celas=None):
         """
         Rhombohedral II elastic tensor
         ----------------------------
@@ -322,15 +408,15 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = (4.0 * c_coeffs[1] + c_coeffs[0]) / 2.0
-        elas[0, 1] = c_coeffs[0] - elas[0, 0]
-        elas[2, 2] = 2.0 * c_coeffs[2]
-        elas[3, 3] = c_coeffs[3]
-        elas[0, 2] = (c_coeffs[4] - elas[0, 0] - elas[0, 1] - elas[2, 2] / 2.0) / 2.0
-        elas[0, 3] = c_coeffs[5]
-        elas[0, 4] = -c_coeffs[6]
-        elas[3, 5] = c_coeffs[7]
+        
+        elas[0, 0] = (celas[0,0]+celas[1,1])/2.0
+        elas[0, 1] = (celas[0,1]+celas[1,0])/2.0
+        elas[0, 2] = (celas[0,2]+celas[2,0]+celas[1,2]+celas[2,1])/4.0
+        elas[0, 3] = (celas[0,3]+celas[3,0]-celas[1,3]-celas[3,1]+celas[4,5]+celas[5,4])/6.0
+        elas[0, 4] = (celas[0,4]+celas[4,0]-celas[1,4]-celas[4,1])/4.0
+        
+        elas[2, 2] = celas[2,2]
+        elas[3, 3] = (celas[3,3]+celas[4,4])/2.0
 
         elas[1, 1] = elas[0, 0]
         elas[1, 0] = elas[0, 1]
@@ -339,15 +425,15 @@ class solve_elas3D(object):
         elas[5, 5] = (elas[0, 0] - elas[0, 1]) / 2.0
         elas[3, 0] = elas[4, 5] = elas[5, 4] = elas[0, 3]
         elas[1, 3] = elas[3, 1] = -elas[0, 3]
-        elas[1, 4] = elas[4, 1] = c_coeffs[7]
+        elas[1, 4] = elas[4, 1] = -elas[0, 4]
         elas[4, 0] = elas[0, 4]
-        elas[5, 3] = elas[3, 5]
-
+        elas[5, 3] = elas[3, 5] = -(celas[5,3]+celas[3,5])/2.0
+        
         Title = "The rhombohedral II crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
+        return elas, Title
 
-    def __tetragonal_I_solve(self, c_coeffs=None, theta=None, phi=None):
+    def __tetragonal_I_solve(self, celas=None):
         """
         Tetragonal I elastic tensor
         ----------------------------
@@ -360,24 +446,25 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[5, 5] = 2.0 * c_coeffs[1]
-        elas[2, 2] = 2.0 * c_coeffs[2]
-        elas[3, 3] = c_coeffs[3]
-        elas[0, 1] = c_coeffs[4] - 2.0 * c_coeffs[5] + c_coeffs[2]
-        elas[0, 0] = c_coeffs[0] - elas[0, 1]
-        elas[0, 2] = c_coeffs[5] - elas[0, 0] / 2.0 - c_coeffs[2]
-
+        
+        elas[0, 0] = (celas[0,0]+celas[1,1])/2.0
+        elas[0, 1] = (celas[0,1]+celas[1,0])/2.0
+        elas[0, 2] = (celas[0,2]+celas[2,0]+celas[1,2]+celas[2,1])/4.0
+        
+        elas[2, 2] = celas[2,2]
+        elas[3, 3] = (celas[3,3]+celas[4,4])/2.0
+        
         elas[1, 1] = elas[0, 0]
         elas[1, 0] = elas[0, 1]
         elas[2, 0] = elas[1, 2] = elas[2, 1] = elas[0, 2]
         elas[4, 4] = elas[3, 3]
-
+        elas[5, 5] = celas[5,5]
+        
         Title = "The tetragonal I crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
+        return elas, Title
 
-    def __tetragonal_II_solve(self, c_coeffs=None, theta=None, phi=None):
+    def __tetragonal_II_solve(self, celas=None):
         """
         Tetragonal II elastic tensor
         ----------------------------
@@ -390,31 +477,27 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = c_coeffs[0] - (c_coeffs[4] - 2.0 * c_coeffs[5] + c_coeffs[2])
+        
+        elas[0, 0] = (celas[0,0]+celas[1,1])/2.0
+        elas[0, 1] = (celas[0,1]+celas[1,0])/2.0
+        elas[0, 2] = (celas[0,2]+celas[2,0]+celas[1,2]+celas[2,1])/4.0
+        elas[0, 5] = (celas[0,5]+celas[5,0]-celas[1,5]-celas[5,1])/4.0
+        
+        elas[2, 2] = celas[2,2]
+        elas[3, 3] = (celas[3,3]+celas[4,4])/2.0
+        
         elas[1, 1] = elas[0, 0]
-        elas[2, 2] = 2.0 * c_coeffs[2]
-        elas[3, 3] = c_coeffs[3]
-        elas[4, 4] = elas[3, 3]
-        elas[5, 5] = 2.0 * c_coeffs[1]
-
-        elas[0, 1] = c_coeffs[4] - 2.0 * c_coeffs[5] + c_coeffs[2]
-        elas[0, 2] = (c_coeffs[4] - c_coeffs[2] - c_coeffs[0]) / 2.0
-        elas[0, 5] = c_coeffs[6] - elas[0, 0] / 2.0 - elas[5, 5] / 2.0
-        elas[1, 2] = elas[0, 2]
-        elas[1, 5] = -elas[0, 5]
-
         elas[1, 0] = elas[0, 1]
-        elas[2, 1] = elas[1, 2]
-        elas[2, 0] = elas[0, 2]
-        elas[5, 1] = elas[0, 5]
-        elas[5, 1] = elas[1, 5]
-
+        elas[2, 0] = elas[1, 2] = elas[2, 1] = elas[0, 2]
+        elas[4, 4] = elas[3, 3]
+        elas[5, 5] = celas[5,5]
+        elas[1, 5] = -elas[0, 5]
+        
         Title = "The tetragonal II crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
+        return elas, Title
 
-    def __orthorhombic_solve(self, c_coeffs=None, theta=None, phi=None):
+    def __orthorhombic_solve(self, celas=None):
         """
         Orthorhombic elastic tensor
         ----------------------------
@@ -425,29 +508,30 @@ class solve_elas3D(object):
         0    0    0    0    C55  0 \\
         0    0    0    0    0    C66
         """
-
+        
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = 2 * c_coeffs[0]
-        elas[1, 1] = 2 * c_coeffs[1]
-        elas[2, 2] = 2 * c_coeffs[2]
-        elas[3, 3] = 2 * c_coeffs[3]
-        elas[4, 4] = 2 * c_coeffs[4]
-        elas[5, 5] = 2 * c_coeffs[5]
-
-        elas[0, 1] = c_coeffs[6] - c_coeffs[0] - c_coeffs[1]
-        elas[1, 2] = c_coeffs[7] - c_coeffs[1] - c_coeffs[2]
-        elas[0, 2] = c_coeffs[8] - c_coeffs[0] - c_coeffs[2]
-
+        
+        elas[0, 0] = celas[0, 0]
+        elas[0, 1] = (celas[0, 1]+celas[1,0])/2.0
+        elas[0, 2] = (celas[0, 2]+celas[2,0])/2.0
+        
+        elas[1, 1] = celas[1, 1]
+        elas[1, 2] = (celas[1, 2]+celas[2,1])/2.0
+        
+        elas[2, 2] = celas[2, 2]
+        elas[3, 3] = celas[3, 3]
+        elas[4, 4] = celas[4, 4]
+        elas[5, 5] = celas[5, 5]
+        
         elas[1, 0] = elas[0, 1]
         elas[2, 1] = elas[1, 2]
         elas[2, 0] = elas[0, 2]
 
         Title = "The orthorhombic crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
+        return elas, Title
 
-    def __monoclinic_solve(self, c_coeffs, theta=None, phi=None):
+    def __monoclinic_solve(self, celas=None):
 
         """
         Monoclinic elastic tensor
@@ -461,22 +545,24 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = 2 * c_coeffs[0]
-        elas[1, 1] = 2 * c_coeffs[1]
-        elas[2, 2] = 2 * c_coeffs[2]
-        elas[3, 3] = 2 * c_coeffs[3]
-        elas[4, 4] = 2 * c_coeffs[4]
-        elas[5, 5] = 2 * c_coeffs[5]
-
-        elas[0, 1] = c_coeffs[6] - c_coeffs[0] - c_coeffs[1]
-        elas[1, 2] = c_coeffs[7] - c_coeffs[1] - c_coeffs[2]
-        elas[0, 2] = c_coeffs[8] - c_coeffs[0] - c_coeffs[2]
-        elas[0, 4] = c_coeffs[9] - c_coeffs[0] - c_coeffs[4]
-        elas[1, 4] = c_coeffs[10] - c_coeffs[1] - c_coeffs[4]
-        elas[2, 4] = c_coeffs[11] - c_coeffs[2] - c_coeffs[4]
-        elas[3, 5] = c_coeffs[12] - c_coeffs[3] - c_coeffs[5]
-
+        
+        elas[0, 0] = celas[0, 0]
+        elas[0, 1] = (celas[0, 1] + celas[1,0])/2.0
+        elas[0, 2] = (celas[0, 2] + celas[2,0])/2.0
+        elas[0, 4] = (celas[0, 4] + celas[4,0])/2.0
+        
+        elas[1, 1] = celas[1, 1]
+        elas[1, 2] = (celas[1, 2] + celas[2,1])/2.0
+        elas[1, 4] = (celas[1, 4] + celas[4,1])/2.0
+        
+        elas[2, 2] = celas[2, 2]
+        elas[2, 4] = (celas[2, 4] + celas[4,2])/2.0
+        elas[3, 3] = celas[3, 3]
+        elas[3, 5] =(celas[3, 5] + celas[5,3])/2.0
+        
+        elas[4, 4] = celas[4,4]
+        elas[5, 5] = celas[5,5]
+        
         elas[1, 0] = elas[0, 1]
         elas[2, 1] = elas[1, 2]
         elas[2, 0] = elas[0, 2]
@@ -484,12 +570,12 @@ class solve_elas3D(object):
         elas[4, 1] = elas[1, 4]
         elas[4, 2] = elas[2, 4]
         elas[5, 3] = elas[3, 5]
-
+        
         Title = "The monoclinic crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
+        return elas, Title
 
-    def __triclinic_solve(self, c_coeffs, theta=None, phi=None):
+    def __triclinic_solve(self, celas=None):
         """
         Triclinic elastic tensor
         ----------------------------
@@ -502,30 +588,34 @@ class solve_elas3D(object):
         """
 
         elas = np.zeros((6, 6))
-
-        elas[0, 0] = 2 * c_coeffs[0]
-        elas[1, 1] = 2 * c_coeffs[1]
-        elas[2, 2] = 2 * c_coeffs[2]
-        elas[3, 3] = 2 * c_coeffs[3]
-        elas[4, 4] = 2 * c_coeffs[4]
-        elas[5, 5] = 2 * c_coeffs[5]
-
-        elas[0, 1] = c_coeffs[6] - c_coeffs[0] - c_coeffs[1]
-        elas[0, 2] = c_coeffs[7] - c_coeffs[0] - c_coeffs[2]
-        elas[0, 3] = c_coeffs[8] - c_coeffs[0] - c_coeffs[3]
-        elas[0, 4] = c_coeffs[9] - c_coeffs[0] - c_coeffs[4]
-        elas[0, 5] = c_coeffs[10] - c_coeffs[0] - c_coeffs[5]
-        elas[1, 2] = c_coeffs[11] - c_coeffs[1] - c_coeffs[2]
-        elas[1, 3] = c_coeffs[12] - c_coeffs[1] - c_coeffs[3]
-        elas[1, 4] = c_coeffs[13] - c_coeffs[1] - c_coeffs[4]
-        elas[1, 5] = c_coeffs[14] - c_coeffs[1] - c_coeffs[5]
-        elas[2, 3] = c_coeffs[15] - c_coeffs[2] - c_coeffs[3]
-        elas[2, 4] = c_coeffs[16] - c_coeffs[2] - c_coeffs[4]
-        elas[2, 5] = c_coeffs[17] - c_coeffs[2] - c_coeffs[5]
-        elas[3, 4] = c_coeffs[18] - c_coeffs[3] - c_coeffs[4]
-        elas[3, 5] = c_coeffs[19] - c_coeffs[3] - c_coeffs[5]
-        elas[4, 5] = c_coeffs[20] - c_coeffs[4] - c_coeffs[5]
-
+        
+        elas[0, 0] = celas[0, 0]
+        elas[0, 1] = (celas[0, 1] + celas[1,0])/2.0
+        elas[0, 2] = (celas[0, 2] + celas[2,0])/2.0
+        elas[0, 3] = (celas[0, 3] + celas[3,0])/2.0
+        elas[0, 4] = (celas[0, 4] + celas[4,0])/2.0
+        elas[0, 5] = (celas[0, 5] + celas[5,0])/2.0
+        
+        elas[1, 1] = celas[1, 1]
+        elas[1, 2] = (celas[1, 2] + celas[2,1])/2.0
+        elas[1, 3] = (celas[1, 3] + celas[3,1])/2.0
+        elas[1, 4] = (celas[1, 4] + celas[4,1])/2.0
+        elas[1, 5] = (celas[1, 5] + celas[5,1])/2.0
+        
+        elas[2, 2] = celas[2, 2]
+        elas[2, 3] = (celas[2, 3] + celas[3,2])/2.0
+        elas[2, 4] = (celas[2, 4] + celas[4,2])/2.0
+        elas[2, 5] = (celas[2, 5] + celas[5,2])/2.0
+        
+        elas[3, 3] = celas[3, 3]
+        elas[3, 4] = (celas[3, 4] + celas[4,3])/2.0
+        elas[3, 5] = (celas[3, 5] + celas[5,3])/2.0
+        
+        elas[4, 4] = celas[4, 4]
+        elas[4, 5] = (celas[4, 5] + celas[5,4])/2.0
+        
+        elas[5, 5] = celas[5, 5]
+        
         elas[1, 0] = elas[0, 1]
         elas[2, 0] = elas[0, 2]
         elas[3, 0] = elas[0, 3]
@@ -544,101 +634,7 @@ class solve_elas3D(object):
 
         Title = "The triclinic crystal mechanical properties"
 
-        self.elasproperties(Celas=elas, title=Title, theta=theta, phi=phi)
-
-    def calc_single_modulus(self, Selas=None, theta=None, phi=None):
-        """
-        To calculate the single crystal modulus:
-        ---
-        Young's modulus
-
-        Bulk modulus
-
-        Shear modulus
-
-        Poisson ratio
-        """
-        U = np.matrix([1, 1, 1, 0, 0, 0,])
-        d = np.matrix(
-            [
-                [np.sin(theta) * np.cos(phi)],
-                [np.sin(theta) * np.sin(phi)],
-                [np.cos(theta)],
-            ]
-        )
-        D = d * d.T
-        Dv = np.matrix(
-            [
-                [D[0, 0]],
-                [D[1, 1]],
-                [D[2, 2]],
-                [np.sqrt(2) * D[1, 2]],
-                [np.sqrt(2) * D[0, 2]],
-                [np.sqrt(2) * D[0, 1]],
-            ]
-        )
-
-        # Young's modulus and Bulk modulus
-        Es = 1 / (Dv.T * Selas * Dv)
-        Bs = 1 / (3 * U * Selas * Dv)
-
-        # Shear modulus
-        chi = np.linspace(0, 2 * np.pi, 360)
-        p_o = np.mat(np.zeros((3, 360)))
-        po = np.mat(np.zeros((1, 360)))
-        Go = np.mat(np.zeros((1, 360)))
-
-        for i in np.arange(0, len(chi), 1):
-
-            p_o[0, i] = -np.cos(theta) * np.cos(phi) * np.cos(chi[i]) + np.sin(
-                phi
-            ) * np.sin(chi[i])
-            p_o[1, i] = -np.cos(theta) * np.sin(phi) * np.cos(chi[i]) - np.cos(
-                phi
-            ) * np.sin(chi[i])
-            p_o[2, i] = np.sin(theta) * np.cos(chi[i])
-
-            for j in np.arange(0, 3, 1):
-                if abs(p_o[j, i]) < 1e-6:
-                    p_o[j, i] = 0
-
-            N = p_o[:, i] * p_o[:, i].T
-            p_V = np.matrix(
-                [
-                    [N[0, 0]],
-                    [N[1, 1]],
-                    [N[2, 2]],
-                    [np.sqrt(2) * N[1, 2]],
-                    [np.sqrt(2) * N[0, 2]],
-                    [np.sqrt(2) * N[0, 1]],
-                ]
-            )
-
-            M = np.sqrt(2) * 0.5 * (d * p_o[:, i].T + p_o[:, i] * d.T)
-            m_V = np.matrix(
-                [
-                    [M[0, 0]],
-                    [M[1, 1]],
-                    [M[2, 2]],
-                    [np.sqrt(2) * M[1, 2]],
-                    [np.sqrt(2) * M[0, 2]],
-                    [np.sqrt(2) * M[0, 1]],
-                ]
-            )
-
-            po[0, i] = -Es * Dv.T * Selas * p_V
-            Go[0, i] = 1 / (2 * m_V.T * Selas * m_V)
-
-        ps_max = po.max()
-        ps_min = po.min()
-        ps_avg = np.sum(po[0, :]) / len(chi)
-
-        Gs_max = Go.max()
-        Gs_min = Go.min()
-        Gs_avg = np.sum(Go[0, :]) / len(chi)
-        Mech = [Es[0, 0], Bs[0, 0], Gs_max, Gs_min, Gs_avg, ps_max, ps_min, ps_avg]
-
-        return Mech
+        return elas, Title
     
     def calc_Youngs_modulus(self, celas=None, theta=None, phi=None):
         """
@@ -674,156 +670,8 @@ class solve_elas3D(object):
         Es = 1/(Dv.T * (Selas * Dv))
         
         return Es[0,0]
-
-    def calc_single_sound_elocity(self, Celas=None, theta=None, phi=None):
-        """
-        To calculate the single crystal sound velocity
-
-        """
-        n1 = np.sin(theta) * np.cos(phi)
-        n2 = np.sin(theta) * np.sin(phi)
-        n3 = np.cos(theta)
-
-        Fv = np.zeros((3, 3))
-        Fv[0, 0] = (
-            n1 * n1 * Celas[0, 0]
-            + n1 * n2 * Celas[0, 5]
-            + n1 * n3 * Celas[0, 4]
-            + n2 * n1 * Celas[5, 0]
-            + n2 * n2 * Celas[5, 5]
-            + n2 * n3 * Celas[5, 4]
-            + n3 * n1 * Celas[4, 0]
-            + n3 * n2 * Celas[4, 5]
-            + n3 * n3 * Celas[4, 4]
-        )
-
-        Fv[1, 1] = (
-            n1 * n1 * Celas[5, 5]
-            + n1 * n2 * Celas[5, 1]
-            + n1 * n3 * Celas[5, 3]
-            + n2 * n1 * Celas[1, 5]
-            + n2 * n2 * Celas[1, 1]
-            + n2 * n3 * Celas[1, 3]
-            + n3 * n1 * Celas[3, 5]
-            + n3 * n2 * Celas[3, 1]
-            + n3 * n3 * Celas[3, 3]
-        )
-
-        Fv[2, 2] = (
-            n1 * n1 * Celas[4, 4]
-            + n1 * n2 * Celas[4, 3]
-            + n1 * n3 * Celas[4, 2]
-            + n2 * n1 * Celas[3, 4]
-            + n2 * n2 * Celas[3, 3]
-            + n2 * n3 * Celas[3, 2]
-            + n3 * n1 * Celas[2, 4]
-            + n3 * n2 * Celas[2, 3]
-            + n3 * n3 * Celas[2, 2]
-        )
-
-        Fv[0, 1] = Fv[1, 0] = (
-            n1 * n1 * Celas[0, 5]
-            + n1 * n2 * Celas[0, 1]
-            + n1 * n3 * Celas[0, 3]
-            + n2 * n1 * Celas[5, 5]
-            + n2 * n2 * Celas[5, 1]
-            + n2 * n3 * Celas[5, 3]
-            + n3 * n1 * Celas[4, 5]
-            + n3 * n2 * Celas[4, 1]
-            + n3 * n3 * Celas[4, 3]
-        )
-
-        Fv[0, 2] = Fv[2, 0] = (
-            n1 * n1 * Celas[0, 4]
-            + n1 * n2 * Celas[0, 3]
-            + n1 * n3 * Celas[0, 2]
-            + n2 * n1 * Celas[5, 4]
-            + n2 * n2 * Celas[5, 3]
-            + n2 * n3 * Celas[5, 2]
-            + n3 * n1 * Celas[4, 4]
-            + n3 * n2 * Celas[4, 3]
-            + n3 * n3 * Celas[4, 2]
-        )
-
-        Fv[1, 2] = Fv[2, 1] = (
-            n1 * n1 * Celas[5, 4]
-            + n1 * n2 * Celas[5, 3]
-            + n1 * n3 * Celas[5, 2]
-            + n2 * n1 * Celas[1, 4]
-            + n2 * n2 * Celas[1, 3]
-            + n2 * n3 * Celas[1, 2]
-            + n3 * n1 * Celas[3, 4]
-            + n3 * n2 * Celas[3, 3]
-            + n3 * n3 * Celas[3, 2]
-        )
-
-        V_s, V_stensor = np.linalg.eigh(Fv * (10 ** 9))
-        v_s = []
-        for i in np.arange(0, len(V_s), 1):
-            v = np.sqrt((V_s[i] / self.density)) / 1000.00
-            v_s.append(v)
-        return v_s
-
-    def single_modulus_velocity(self, Celas):
-        """
-        Single-crystal modulus and sound velocity in 3D
-        -----
-        Young's modulus
-
-        Bulk modulus  
-
-        Shear modulus  
-
-        Poisson's ratio  
-
-        sound velocity
-        """
-
-        Selas = np.linalg.inv(Celas)
-
-        # Single crystal sound velocity in 3D
-        Single_V = open("single_sound_velocity_3D.out", mode="w")
-        print("# theta(rad)  phi(rad)  Vs1(km/s)  Vs2(km/s)  Vl(km/s)", file=Single_V)
-        for theta in np.linspace(0, np.pi / 2, 180):
-            for phi in np.linspace(0, 2 * np.pi, 720):
-                vs_single = self.calc_single_sound_elocity(
-                    Celas=Celas, theta=theta, phi=phi
-                )
-                print(
-                    "{:.8f}  {:.8f}   {:.4f}   {:.4f}   {:.4f}".format(
-                        theta, phi, vs_single[0], vs_single[1], vs_single[2]
-                    ),
-                    file=Single_V,
-                )
-            print("", file=Single_V)
-
-        # Single crystal modulus in 3D
-        Single_modulus = open("single_modulus_3D.out", mode="w")
-        print(
-            "# theta(rad)  phi(rad)  Es(GPa)  Bs(GPa)  G_max(GPa)  G_min(GPa)  G_avg(GPa)  Po_max(GPa)  Po_max(GPa)  Po_max(GPa)",
-            file=Single_modulus,
-        )
-        for theta in np.linspace(0, np.pi / 2, 90):
-            for phi in np.linspace(0, 2 * np.pi, 360):
-                Ms_single = self.calc_single_modulus(Selas=Selas, theta=theta, phi=phi)
-                print(
-                    "{:.8f}  {:.8f}   {:.4f}   {:.4f}   {:.4f}   {:.4f}   {:.4f}   {:.4f}   {:.4f}   {:.4f}".format(
-                        theta,
-                        phi,
-                        Ms_single[0],
-                        Ms_single[1],
-                        Ms_single[2],
-                        Ms_single[3],
-                        Ms_single[4],
-                        Ms_single[5],
-                        Ms_single[6],
-                        Ms_single[7],
-                    ),
-                    file=Single_modulus,
-                )
-            print("", file=Single_modulus)
-
-    def elasproperties(self, Celas=None, title=None, theta=None, phi=None):
+    
+    def elasproperties(self, Celas=None, title=None):
 
         Selas = np.linalg.inv(Celas)
 
@@ -923,7 +771,7 @@ class solve_elas3D(object):
                 if_stable = "Unstable"
 
         # Output to elastic.out
-        elasfile = open("second_elastic.out", mode="w")
+        elasfile = open("second_elastic_{}K.out".format(self.Temp), mode="w")
 
         print(title, file=elasfile)
         if self.spg_num >= 1 and self.spg_num <= 2:
@@ -1270,7 +1118,6 @@ class solve_elas3D(object):
             )
 
         print("\n", end="", file=elasfile)
-        
         print("Pure single-crystal Young's modulus (GPa)", file=elasfile)
         celas=Celas
         for i in np.arange(0, 3, 1):
@@ -1306,4 +1153,7 @@ class solve_elas3D(object):
         
         print("\n", end="", file=elasfile)
         print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elasfile)
+        print("             J. Chem. Phys. 76 (1982), 2662–2666.", file=elasfile)
 
+if __name__ == "__main__":
+    npt_solve_method_2(Temp=300).read_nxdatcar(sstep=10000, estep=150000,nxdatcar=1)

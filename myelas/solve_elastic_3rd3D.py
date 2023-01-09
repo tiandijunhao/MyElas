@@ -7,17 +7,8 @@ from . import plot_fit_E
 from . import strain_matrix_string
 
 class solve_elas3D(object):
-    def __init__(
-        self,
-        spg_num=None,
-        lattindex=None,
-        latt=None,
-        volume=None,
-        density=None,
-        mass=None,
-        num=None,
-    ):
-
+    def __init__(self):
+        print("Solve 3rd elastic constants of bulk materials.")
         self.spg_num = readpos.read_poscar().spacegroup_num()
         self.lattindex = readpos.read_poscar().latt_index()
         self.latt = standard_cell.recell(to_pricell=False).latti()
@@ -251,6 +242,9 @@ class solve_elas3D(object):
         print("C144 = ", format(elas_3rd_144, ".4f"), file=elas3rd_file)
         print("C166 = ", format(elas_3rd_166, ".4f"), file=elas3rd_file)
         print("C456 = ", format(elas_3rd_456, ".4f"), file=elas3rd_file)
+        
+        print("\n", end="", file=elas3rd_file)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elas3rd_file)
 
     def __cubicII3rd_solve(self, c_coeffs_3rd=None, c_coeffs_2nd=None):
 
@@ -294,6 +288,9 @@ class solve_elas3D(object):
         print("C155 = ", format(elas_3rd_155, ".4f"), file=elas3rd_file)
         print("C166 = ", format(elas_3rd_166, ".4f"), file=elas3rd_file)
         print("C456 = ", format(elas_3rd_456, ".4f"), file=elas3rd_file)
+        
+        print("\n", end="", file=elas3rd_file)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elas3rd_file)
 
     def __HexaI3rd_solve(self, c_coeffs_3rd=None, c_coeffs_2nd=None):
 
@@ -356,6 +353,9 @@ class solve_elas3D(object):
         print("C155 = ", format(elas_3rd_155, ".4f"), file=elas3rd_file)
         print("C123 = ", format(elas_3rd_123, ".4f"), file=elas3rd_file)
         print("C344 = ", format(elas_3rd_344, ".4f"), file=elas3rd_file)
+        
+        print("\n", end="", file=elas3rd_file)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elas3rd_file)
 
     def __HexaII3rd_solve(self, c_coeffs_3rd=None, c_coeffs_2nd=None):
 
@@ -425,6 +425,9 @@ class solve_elas3D(object):
         print("C123 = ", format(elas_3rd_123, ".4f"), file=elas3rd_file)
         print("C145 = ", format(elas_3rd_145, ".4f"), file=elas3rd_file)
         print("C344 = ", format(elas_3rd_344, ".4f"), file=elas3rd_file)
+        
+        print("\n", end="", file=elas3rd_file)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elas3rd_file)
 
     def __orthorhombic3rd_solve(self, c_coeffs_3rd=None, c_coeffs_2nd=None):
 
@@ -540,6 +543,8 @@ class solve_elas3D(object):
 
         print("C123 = ", format(elas_3rd_123, ".4f"), file=elas3rd_file)
         print("C456 = ", format(elas_3rd_456, ".4f"), file=elas3rd_file)
+        print("\n", end="", file=elas3rd_file)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elas3rd_file)
 
     def __tetra3rd_solve(self, c_coeffs_3rd=None, c_coeffs_2nd=None):
 
@@ -623,3 +628,6 @@ class solve_elas3D(object):
 
         print("C123 = ", format(elas_3rd_123, ".4f"), file=elas3rd_file)
         print("C456 = ", format(elas_3rd_456, ".4f"), file=elas3rd_file)
+        
+        print("\n", end="", file=elas3rd_file)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elas3rd_file)

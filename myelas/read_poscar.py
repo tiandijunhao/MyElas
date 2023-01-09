@@ -30,19 +30,7 @@ class read_poscar(object):
     spg_number     : The space group number of structure.
 
     """
-    def __init__(
-        self,
-        struct=None,
-        pos_name=None,
-        lattice_index=None,
-        lat=None,
-        lat_recell=None,
-        atomname=None,
-        atomnum=None,
-        postype=None,
-        pos=None,
-        spg_number=None,
-    ):
+    def __init__(self):
 
         self.struct = linecache.getlines("POSCAR-uc")
         # read POSCAR to get some paramatrics: sys_name; lattice; atom_name; atom_number; atom_position

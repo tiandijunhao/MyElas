@@ -23,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "-so",
     "--solve",
-    metavar="3D_2nd/2D_2nd/3D_3rd",
+    metavar="3D_2nd/2D_2nd/3D_3rd/nvt",
     type=str,
     nargs=1,
     help="Solve elastic type which need calculate",
@@ -100,7 +100,7 @@ parser.add_argument(
 
 parser.add_argument(
     "-Te",
-    "--Temperature",
+    "--eTemperature",
     metavar="300.0",
     type=float,
     default=[0],
@@ -136,6 +136,91 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--ediff",
+    metavar="1e-6",
+    type=float,
+    nargs=1,
+    default=[1e-6],
+    help="The EDIFF in INCAR",
+)
+
+parser.add_argument(
+    "--ediffg",
+    metavar="-0.001",
+    type=float,
+    nargs=1,
+    default=[-0.001],
+    help="The EDIFFG in INCAR",
+)
+
+parser.add_argument(
+    "--ml",
+    metavar="0",
+    type=int,
+    nargs=1,
+    default=[0],
+    help="The ML_LMLFF in INCAR, 1 is TRUE, support VASP>6.3",
+)
+
+parser.add_argument(
+    "--mistart",
+    metavar="1/2/3",
+    type=int,
+    nargs=1,
+    default=[1],
+    help="The ML_ISTART in INCAR, support VASP>6.3",
+)
+
+parser.add_argument(
+    "--nsw",
+    metavar="10000",
+    type=int,
+    nargs=1,
+    default=[10000],
+    help="The total step in INCAR when running MD",
+)
+
+parser.add_argument(
+    "--potim",
+    metavar="1.0",
+    type=float,
+    nargs=1,
+    default=[1.0],
+    help="The time step in INCAR when running MD, unit: fs",
+)
+
+parser.add_argument(
+    "--lgamma",
+    metavar="1.0",
+    type=float,
+    nargs='+',
+    default=[20.0],
+    help="The LANGEVIN_GAMMA in INCAR when running NPT MD ",
+)
+
+parser.add_argument(
+    "--lgammal",
+    metavar="1.0",
+    type=float,
+    nargs=1,
+    default=[20.0],
+    help="The LANGEVIN_GAMMA_L in INCAR when running NPT MD ",
+)
+
+parser.add_argument(
+    "--pmass",
+    metavar="1.0",
+    type=float,
+    nargs=1,
+    default=[20.0],
+    help="The PMASS in INCAR when running NPT MD ",
+)
+
+parser.add_argument(
+    "-T", "--Temperature", metavar="300.0", type=float, nargs=1, help="Temperature in MD"
+)
+
+parser.add_argument(
     "-ks",
     "--kspace",
     metavar="0.10",
@@ -162,7 +247,7 @@ parser.add_argument(
 parser.add_argument(
     "-ctype",
     "--calc_type",
-    metavar="rlc/stc",
+    metavar="rlc/stc/nvt/npt",
     type=str,
     default=["stc"],
     nargs=1,
@@ -196,11 +281,55 @@ parser.add_argument(
     help="input phonon data file",
 )
 
+parser.add_argument(
+    "-md",
+    "--molecular_dynamics",
+    metavar="NVT/NPT",
+    type=str,
+    nargs=1,
+    help="Calculate finite temperature elastic constants by MD",
+)
+
+# NPT parameters
+parser.add_argument(
+    "-method",
+    "--method",
+    metavar="1/2",
+    type=int,
+    default=[1],
+    nargs=1,
+    help="Different method which solve elastic constants when using NPT",
+)
+
+parser.add_argument(
+    "-xnum",
+    "--xnumber",
+    metavar="5",
+    type=int,
+    nargs=1,
+    help="Number of XDATCAR (and stress.out) when using NPT",
+)
+
+parser.add_argument(
+    "--sstep", metavar="3000", type=int, default=[3000], nargs=1, help="Start MD step"
+)
+
+parser.add_argument(
+    "--estep", metavar="10000", type=int, default=[50000], nargs=1, help="End MD step"
+)
+
+parser.add_argument(
+    "--slice",
+    metavar="2000",
+    type=int,
+    default=[2000],
+    nargs=1,
+    help="Slice MD step when using NVT method or single NPT_MD data",
+)
+
 args = parser.parse_args()
 
 # Generate the strain POSCAR
-
-print("Welcome to use MyElas")
 
 if args.generate:
     if os.path.isfile("POSCAR-uc"):
@@ -329,7 +458,17 @@ if args.vasp:
             sigma=args.sigma[0],
             isif=args.isif[0],
             pressure=args.pressure[0],
+            eTemperature=args.eTemperature[0],
+            ediff=args.ediff[0],
+            ediffg=args.ediffg[0],
             Temperature=args.Temperature[0],
+            nsw=args.nsw[0],
+            potim=args.potim[0],
+            lgamma=args.lgamma,
+            lgammal=args.lgammal[0],
+            pmass=args.pmass[0],
+            ml=args.ml[0],
+            mistart=args.mistart[0],
             Calc_type=args.calc_type[0],
         )
 
@@ -370,4 +509,81 @@ if args.read_phonon_to_calc:
         myelas.phonon_to_elas.phononToElas().calc_elas_tdep(
             phonon_file=args.input_phonon_file[0]
         )
+
+# Solve elastic constants
+if args.molecular_dynamics:
+    if args.molecular_dynamics[0] == "npt":
+        if args.method[0] == 1:
+            if args.xnumber:
+                print("Note: You must rename XDATCARs to XDATCAR_01, XDATCAR_02, etc.")
+                print("Note: You must rename stress.out to stress_01.out, stress_02.out, etc.")
+                if args.Temperature:
+                    if args.sstep:
+                        if args.estep:
+                            myelas.elastic_npt_method1.npt_solve_method_1(
+                                Temp=args.Temperature[0]
+                            ).read_nxdatcar(
+                                sstep=args.sstep[0],
+                                estep=args.estep[0],
+                                nxdatcar=args.xnumbers[0],
+                            )
+            else:
+                if args.Temperature:
+                    if args.sstep:
+                        if args.slice:
+                            myelas.elastic_npt_method1.npt_solve_method_1(
+                                Temp=args.Temperature[0]
+                            ).read_sxdatcar(
+                                sstep=args.sstep[0], slice_step=args.slice[0]
+                            )
+        elif args.method[0] == 2:
+            if args.xnumber:
+                print("Note: You must rename XDATCARs to XDATCAR_01, XDATCAR_02, etc.")
+                if args.Temperature:
+                    if args.sstep:
+                        if args.estep:
+                            myelas.elastic_npt_method2.npt_solve_method_2(
+                                Temp=args.Temperature[0]
+                            ).read_nxdatcar(
+                                sstep=args.sstep[0],
+                                estep=args.estep[0],
+                                nxdatcar=args.xnumbers[0],
+                            )
+            else:
+                if args.Temperature:
+                    if args.sstep:
+                        if args.slice:
+                            myelas.elastic_npt_method2.npt_solve_method_2(
+                                Temp=args.Temperature[0]
+                            ).read_sxdatcar(
+                                sstep=args.sstep[0], slice_step=args.slice[0]
+                            )
+
+    elif args.molecular_dynamics[0] == "nvt":
+        if args.generate:
+            if os.path.isfile("POSCAR-uc"):
+                if args.generate[0] == "nvt":
+                    if args.strainmax:
+                        if args.strainnum:
+                            myelas.elastic_nvt_poscar.stress_strain_poscar_3d().crystal_strain(
+                                strainmax=args.strainmax[0], strainnum=args.strainnum[0]
+                            )
+
+        if args.solve:
+            if args.solve[0] == "nvt":
+                if args.strainmax:
+                    if args.strainnum:
+                        if args.Temperature:
+                            if args.sstep:
+                                if args.estep:
+                                    if args.slice:
+                                        myelas.elastic_nvt.nvt_solve(
+                                            Temp=args.Temperature
+                                        ).solve(
+                                            strainmax=args.strainmax,
+                                            strainnum=args.strainnum,
+                                            sstep=args.sstep,
+                                            estep=args.estep,
+                                            slice_step=args.slice,
+                                        )
 

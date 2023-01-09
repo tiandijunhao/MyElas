@@ -8,10 +8,8 @@ from . import strain_matrix_string
 
 
 class solve_elas2D(object):
-    def __init__(
-        self, spg_num=None, lattindex=None, latt=None, area=None, density=None
-    ):
-
+    def __init__(self):
+        print("Solve 2D elastic constants.")
         self.spg_num = readpos.read_poscar().spacegroup_num()
         self.lattindex = readpos.read_poscar().latt_index()
         self.latt = readpos.read_poscar().latti()
@@ -245,3 +243,6 @@ class solve_elas2D(object):
         print("  Elastic anisotropy index      : ", format(A_SU, ".2f"), file=elasfile)
         print("  Ranganathan anisotropy index  : ", format(A_R, ".2f"), file=elasfile)
         print("  Kube anisotropy index         : ", format(A_K, ".2f"), file=elasfile)
+        
+        print("\n", end="", file=elasfile)
+        print("Please cite: Comput. Phys. Commun., 281 (2022), 108495", file=elasfile)
