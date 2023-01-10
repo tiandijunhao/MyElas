@@ -578,7 +578,7 @@ if args.molecular_dynamics:
                                 if args.estep:
                                     if args.slice:
                                         myelas.elastic_nvt.nvt_solve(
-                                            Temp=args.Temperature
+                                            Temp=args.Temperature[0]
                                         ).solve(
                                             strain_max=args.strainmax[0],
                                             strain_num=args.strainnum[0],
