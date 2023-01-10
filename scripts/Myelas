@@ -582,8 +582,8 @@ if args.molecular_dynamics:
                                         ).solve(
                                             strain_max=args.strainmax[0],
                                             strain_num=args.strainnum[0],
-                                            sstep=args.sstep,
-                                            estep=args.estep,
-                                            slice_step=args.slice,
+                                            sstep=args.sstep[0],
+                                            estep=args.estep[0],
+                                            slice_step=args.slice[0],
                                         )
 
