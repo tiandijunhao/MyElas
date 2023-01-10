@@ -1013,19 +1013,13 @@ class nvt_solve(object):
         print("Elastic tensor C_ij (unit: GPa)", file=elasfile)
 
         for i in np.arange(0, 6, 1):
-            print(
-                "  ",
-                format(Celas[i, 0], ".3f"),
-                "  ",
-                format(Celas[i, 1], ".3f"),
-                "  ",
-                format(Celas[i, 2], ".3f"),
-                "  ",
-                format(Celas[i, 3], ".3f"),
-                "  ",
-                format(Celas[i, 4], ".3f"),
-                "  ",
-                format(Celas[i, 5], ".3f"),
+            print(             
+                format(Celas[i, 0], ">10.3f"),               
+                format(Celas[i, 1], ">10.3f"),               
+                format(Celas[i, 2], ">10.3f"),               
+                format(Celas[i, 3], ">10.3f"),                
+                format(Celas[i, 4], ">10.3f"),                
+                format(Celas[i, 5], ">10.3f"),
                 file=elasfile,
             )
         print("\n", end="", file=elasfile)
@@ -1033,18 +1027,12 @@ class nvt_solve(object):
 
         for i in np.arange(0, 6, 1):
             print(
-                "  ",
-                format(Selas[i, 0], ".6f"),
-                "  ",
-                format(Selas[i, 1], ".6f"),
-                "  ",
-                format(Selas[i, 2], ".6f"),
-                "  ",
-                format(Selas[i, 3], ".6f"),
-                "  ",
-                format(Selas[i, 4], ".6f"),
-                "  ",
-                format(Selas[i, 5], ".6f"),
+                format(Selas[i, 0], ">10.6f"),
+                format(Selas[i, 1], ">10.6f"),
+                format(Selas[i, 2], ">10.6f"),
+                format(Selas[i, 3], ">10.6f"),
+                format(Selas[i, 4], ">10.6f"),
+                format(Selas[i, 5], ">10.6f"),
                 file=elasfile,
             )
 
