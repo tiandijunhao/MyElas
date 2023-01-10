@@ -563,8 +563,8 @@ if args.molecular_dynamics:
         if args.generate:
             if os.path.isfile("POSCAR-uc"):
                 if args.generate[0] == "nvt":
-                    if args.strainmax:
-                        if args.strainnum:
+                    if args.strainmax[0]:
+                        if args.strainnum[0]:
                             myelas.elastic_nvt_poscar.stress_strain_poscar_3d().crystal_strain(
                                 strainmax=args.strainmax[0], strainnum=args.strainnum[0]
                             )
@@ -580,8 +580,8 @@ if args.molecular_dynamics:
                                         myelas.elastic_nvt.nvt_solve(
                                             Temp=args.Temperature
                                         ).solve(
-                                            strain_max=args.strainmax,
-                                            strain_num=args.strainnum,
+                                            strain_max=args.strainmax[0],
+                                            strain_num=args.strainnum[0],
                                             sstep=args.sstep,
                                             estep=args.estep,
                                             slice_step=args.slice,
