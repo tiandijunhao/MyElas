@@ -580,8 +580,8 @@ if args.molecular_dynamics:
                                         myelas.elastic_nvt.nvt_solve(
                                             Temp=args.Temperature
                                         ).solve(
-                                            strainmax=args.strainmax,
-                                            strainnum=args.strainnum,
+                                            strain_max=args.strainmax,
+                                            strain_num=args.strainnum,
                                             sstep=args.sstep,
                                             estep=args.estep,
                                             slice_step=args.slice,
