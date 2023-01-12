@@ -91,7 +91,7 @@ class nvt_solve(object):
         elif self.spg_num >= 195 and self.spg_num <= 230:
             nelastic = 2
         
-        strain_matrix_str=strain_matrix_string.Elastics_3D(spg_num=self.spg_num)
+        strain_matrix_str=strain_matrix_string.Elastics_NVT(spg_num=self.spg_num)
 
         starin_step = 2.0 * strain_max / (strain_num - 1)
         strain_param = np.arange(-strain_max, strain_max + 0.0001, starin_step)
