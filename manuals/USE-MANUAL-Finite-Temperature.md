@@ -78,6 +78,7 @@ cd ${j}
 cp ../../INCAR_NVT INCAR
 cp ../../KPOINTS .
 cp ../../POTCAR .
+phonopy -d --dim="4 4 4" -c POSCAR #unit cell transform to super cell
 cp SPOSCAR POSCAR
 
 #
